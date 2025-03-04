@@ -27,7 +27,7 @@ jobs:
           # SCP directly to the expanded volume
           scp -o StrictHostKeyChecking=no -i private_key app-image.tar root@$HOST:/mnt/volume_nyc1_02/app-image.tar
           ssh -o StrictHostKeyChecking=no -i private_key root@$HOST '
-            cd /mnt/volume_nyc1_01 && \
+            cd /mnt/volume_nyc1_02 && \
             docker load < app-image.tar && \
             docker stop app || true && \
             docker rm app || true && \
@@ -37,7 +37,7 @@ jobs:
               -p 8000:8000 \
               -e DOMAIN='$DOMAIN' \
               -e NODE_ENV=production \
-              -v /mnt/volume_nyc1_01:/app/data \
+              -v /mnt/volume_nyc1_02:/app/data \
               app-image:latest && \
             docker system prune -a --volumes -f
           '
