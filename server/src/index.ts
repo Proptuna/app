@@ -1,13 +1,13 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
+import { open, Database } from 'sqlite';
 
 // Initialize SQLite database
-let db;
-async function initializeDatabase() {
+let db: Database<sqlite3.Database, sqlite3.Statement>;
+async function initializeDatabase(): Promise<void> {
   db = await open({
     filename: './waitlist.db',
     driver: sqlite3.Database
@@ -39,12 +39,12 @@ app.use('/static', express.static(path.join(__dirname, '../../client/static')));
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
 // API routes
-app.get('/api', (req, res) => {
+app.get('/api', (req: Request, res: Response) => {
   res.json({ message: 'Hello from server!' });
 });
 
 // Waitlist endpoint
-app.post('/api/waitlist', async (req, res) => {
+app.post('/api/waitlist', async (req: Request, res: Response) => {
   const { email } = req.body;
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -54,10 +54,11 @@ app.post('/api/waitlist', async (req, res) => {
   try {
     await db.run('INSERT INTO waitlist (email) VALUES (?)', [email]);
     res.json({ message: 'Thank you for joining the waitlist!' });
-  } catch (err) {
-    if (err.code === 'SQLITE_CONSTRAINT') {
+  } catch (err: unknown) {
+    if (err instanceof Error && 'code' in err && err.code === 'SQLITE_CONSTRAINT') {
       return res.status(400).json({ error: 'This email is already on the waitlist' });
     }
+    console.error(err);
     res.status(500).json({ error: 'Something went wrong' });
   }
 });
@@ -67,7 +68,7 @@ const clientBuildPath = path.resolve(__dirname, '../../dist/client');
 app.use(express.static(clientBuildPath));
 
 // Serve the index.html for any other requests (SPA fallback)
-app.get('*', (req, res) => {
+app.get('*', (req: Request, res: Response) => {
   res.sendFile(path.join(clientBuildPath, 'index.html'));
 });
 
@@ -76,4 +77,7 @@ initializeDatabase().then(() => {
   app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
   });
+}).catch((err: unknown) => {
+  console.error(err);
+  process.exit(1);
 });
