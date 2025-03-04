@@ -9,16 +9,15 @@ import { open, Database } from 'sqlite';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Database path
-const DB_PATH = process.env.NODE_ENV === 'production' 
-  ? path.join(process.cwd(), 'data', 'waitlist.db')
-  : './waitlist.db';
-
 // Initialize SQLite database
 let db: Database<sqlite3.Database, sqlite3.Statement>;
 async function initializeDatabase(): Promise<void> {
+  // Use data directory from environment variable or default location
+  const dataDir = process.env.DATA_DIR || process.cwd();
+  const dbPath = path.join(dataDir, 'waitlist.db');
+    
   db = await open({
-    filename: DB_PATH,
+    filename: dbPath,
     driver: sqlite3.Database
   });
 
@@ -41,7 +40,10 @@ app.use(express.json());
 app.use('/static', express.static(path.join(__dirname, '../../client/static')));
 
 // Serve files from public directory
-app.use('/public', express.static(path.join(__dirname, 'public')));
+const publicPath = process.env.NODE_ENV === 'production'
+  ? path.join(__dirname, 'public')
+  : path.join(__dirname, 'public');
+app.use('/public', express.static(publicPath));
 
 // API routes
 app.get('/api', (req: Request, res: Response) => {

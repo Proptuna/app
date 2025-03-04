@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc && ncc build ../dist/server/index.js -o ../dist/server-bundle --external sqlite3 && rm -rf ../dist/server && mv ../dist/server-bundle ../dist/server && echo '{\"type\":\"module\"}' > ../dist/server/package.json",
+    "build": "tsc && cp -r src/public ../dist/server/",
     "start": "node dist/index.js"
   },
   "dependencies": {
@@ -19,7 +19,6 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^20.11.19",
-    "@vercel/ncc": "^0.38.1",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   }

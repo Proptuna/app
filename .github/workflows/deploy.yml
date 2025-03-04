@@ -11,7 +11,13 @@ jobs:
       DOMAIN: app.proptuna.com
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+          cache: "yarn"
 
       - name: Build Docker Image
         run: |
@@ -27,17 +33,25 @@ jobs:
           # SCP directly to the expanded volume
           scp -o StrictHostKeyChecking=no -i private_key app-image.tar root@$HOST:/mnt/volume_nyc1_02/app-image.tar
           ssh -o StrictHostKeyChecking=no -i private_key root@$HOST '
+            # Load the Docker image
             cd /mnt/volume_nyc1_02 && \
             docker load < app-image.tar && \
+            
+            # Stop and remove the existing container if it exists
             docker stop app || true && \
             docker rm app || true && \
+            
+            # Run the new container with proper volume mounting
             docker run -d \
               --name app \
               --restart always \
               -p 8000:8000 \
               -e DOMAIN='$DOMAIN' \
               -e NODE_ENV=production \
-              -v /mnt/volume_nyc1_02:/app/data \
+              -e DATA_DIR=/mnt/volume_nyc1_02 \
+              -v /mnt/volume_nyc1_02:/mnt/volume_nyc1_02 \
               app-image:latest && \
+            
+            # Clean up old images and volumes
             docker system prune -a --volumes -f
           '

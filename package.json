@@ -12,7 +12,7 @@
     "build:client": "yarn workspace client build",
     "build:server": "yarn workspace server build",
     "clean": "rm -rf dist",
-    "start": "node dist/server/index.js"
+    "start": "node --experimental-specifier-resolution=node dist/server/index.js"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
