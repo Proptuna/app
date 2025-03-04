@@ -5,11 +5,20 @@ import { fileURLToPath } from 'url';
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
 
+// Get __dirname equivalent in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Database path
+const DB_PATH = process.env.NODE_ENV === 'production' 
+  ? path.join(process.cwd(), 'data', 'waitlist.db')
+  : './waitlist.db';
+
 // Initialize SQLite database
 let db: Database<sqlite3.Database, sqlite3.Statement>;
 async function initializeDatabase(): Promise<void> {
   db = await open({
-    filename: './waitlist.db',
+    filename: DB_PATH,
     driver: sqlite3.Database
   });
 
@@ -21,10 +30,6 @@ async function initializeDatabase(): Promise<void> {
     )
   `);
 }
-
-// Get __dirname equivalent in ESM
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 8000;
