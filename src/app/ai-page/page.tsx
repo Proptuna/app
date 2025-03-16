@@ -56,8 +56,6 @@ export default function AIPage() {
   const [agentChatMode, setAgentChatMode] = useState("chat");
   const [showHistory, setShowHistory] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [isHotlineCollapsed, setIsHotlineCollapsed] = useState(false);
-  const [isAgentCollapsed, setIsAgentCollapsed] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const agentMessagesEndRef = useRef<HTMLDivElement>(null);
@@ -112,6 +110,7 @@ export default function AIPage() {
   useEffect(() => {
     if (messagesEndRef.current && messagesContainerRef.current) {
       const container = messagesContainerRef.current;
+      // Force scroll to bottom
       container.scrollTop = container.scrollHeight;
     }
   }, [messages]);
@@ -119,6 +118,7 @@ export default function AIPage() {
   useEffect(() => {
     if (agentMessagesEndRef.current && agentMessagesContainerRef.current) {
       const container = agentMessagesContainerRef.current;
+      // Force scroll to bottom
       container.scrollTop = container.scrollHeight;
     }
   }, [agentMessages]);
@@ -247,240 +247,33 @@ export default function AIPage() {
     }
   };
 
-  const startNewConversation = (tab: string) => {
-    if (tab === "hotline") {
-      setIsHotlineCollapsed(false);
+  const startNewConversation = () => {
+    if (activeTab === "hotline") {
+      setMessages([
+        {
+          sender: "ai",
+          text: "Hello! I'm the Proptuna AI assistant. How can I help you today?",
+          timestamp: "Just now",
+        },
+      ]);
+      setInputMessage("");
     } else {
-      setIsAgentCollapsed(false);
+      setAgentMessages([
+        {
+          sender: "ai",
+          text: "Hello! I'm the Proptuna Agent. I can help you with system questions or perform common tasks. What would you like to know?",
+          timestamp: "Just now",
+        },
+      ]);
+      setAgentInputMessage("");
     }
   };
 
-  const renderChatInterface = (
-    messages: Array<{ sender: "ai" | "user"; text: string; timestamp: string }>,
-    inputValue: string,
-    setInputValue: React.Dispatch<React.SetStateAction<string>>,
-    handleSend: () => void,
-    mode: string,
-    setMode: React.Dispatch<React.SetStateAction<string>>,
-    isCollapsed: boolean,
-    setIsCollapsed: React.Dispatch<React.SetStateAction<boolean>>,
-    messagesEndRef: React.RefObject<HTMLDivElement>,
-    messagesContainerRef: React.RefObject<HTMLDivElement>,
-  ) => (
-    <div className="flex-1 flex flex-col p-0 m-0">
-      <div
-        className="flex justify-between items-center px-4 py-2 border-b border-gray-200 dark:border-gray-700"
-      >
-        <h3 className="font-medium">
-          Conversation
-        </h3>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1 h-8 w-8"
-        >
-          {isCollapsed ? (
-            <ChevronDownIcon className="h-4 w-4" />
-          ) : (
-            <ChevronUpIcon className="h-4 w-4" />
-          )}
-        </Button>
-      </div>
-
-      {!isCollapsed && (
-        <>
-          <div
-            className="flex-1 p-6 overflow-y-auto"
-            ref={messagesContainerRef}
-          >
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex mb-4 ${message.sender === "user" ? "justify-end" : "justify-start"}`}
-                id={`message-${index}`}
-              >
-                {message.sender === "ai" && (
-                  <Avatar className="h-8 w-8 mr-2" id={`g2otsd_${index}`}>
-                    <AvatarImage
-                      src="https://github.com/polymet-ai.png"
-                      alt="AI"
-                      id={`phhgdq_${index}`}
-                    />
-
-                    <AvatarFallback id={`82jwph_${index}`}>AI</AvatarFallback>
-                  </Avatar>
-                )}
-
-                <div
-                  className={`max-w-[70%] p-3 rounded-lg ${
-                    message.sender === "user"
-                      ? "bg-indigo-600 text-white"
-                      : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  }`}
-                  id={`7dzsr7_${index}`}
-                >
-                  <div className="text-sm" id={`bcafvr_${index}`}>
-                    {message.text}
-                  </div>
-                  <div
-                    className="text-xs mt-1 opacity-70"
-                    id={`54q6gy_${index}`}
-                  >
-                    {message.timestamp}
-                  </div>
-                </div>
-
-                {message.sender === "user" && (
-                  <Avatar className="h-8 w-8 ml-2" id={`0wbtqt_${index}`}>
-                    <AvatarImage
-                      src="https://github.com/yusufhilmi.png"
-                      alt="User"
-                      id={`kaw23p_${index}`}
-                    />
-
-                    <AvatarFallback id={`ezcbyw_${index}`}>U</AvatarFallback>
-                  </Avatar>
-                )}
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-
-          <div
-            className="border-t border-gray-200 dark:border-gray-700 p-4"
-          >
-            {activeTab === "hotline" && (
-              <div className="flex gap-4 mb-4">
-                <div className="w-full sm:w-48">
-                  <Select
-                    value={selectedProperty}
-                    onValueChange={setSelectedProperty}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Property" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {properties.map((property, index) => (
-                        <SelectItem
-                          key={property.id}
-                          value={property.id}
-                          id={`jjx8yg_${index}`}
-                        >
-                          {property.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="w-full sm:w-48">
-                  <Select
-                    value={selectedPerson}
-                    onValueChange={setSelectedPerson}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Person" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {people.map((person, index) => (
-                        <SelectItem
-                          key={person.id}
-                          value={person.id}
-                          id={`ja2j23_${index}`}
-                        >
-                          {person.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span
-                    className="text-sm text-gray-600 dark:text-gray-400"
-                  >
-                    Create job
-                  </span>
-                  <Switch
-                    checked={createJob}
-                    onCheckedChange={setCreateJob}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-2 items-center">
-              <div className="mr-2">
-                <div className="flex space-x-1 h-10">
-                  <Button
-                    variant={mode === "chat" ? "default" : "outline"}
-                    onClick={() => setMode("chat")}
-                    className="px-3"
-                  >
-                    <MessageSquareIcon className="h-4 w-4 mr-2" />
-                    Chat
-                  </Button>
-                  <Button
-                    variant={mode === "voice" ? "default" : "outline"}
-                    onClick={() => setMode("voice")}
-                    className="px-3"
-                  >
-                    <VolumeIcon className="h-4 w-4 mr-2" />
-                    Voice
-                  </Button>
-                </div>
-              </div>
-
-              {mode === "chat" ? (
-                <>
-                  <Input
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    placeholder="Type your message..."
-                    onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                    className="flex-1"
-                  />
-
-                  <Button onClick={handleSend}>
-                    <SendIcon className="h-4 w-4" />
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  onClick={toggleRecording}
-                  size="lg"
-                  className={`flex-1 ${isRecording ? "bg-red-500 hover:bg-red-600" : ""}`}
-                >
-                  <MicIcon className="h-5 w-5 mr-2" />
-                  {isRecording ? "Recording..." : "Start Recording"}
-                </Button>
-              )}
-            </div>
-          </div>
-        </>
-      )}
-
-      {isCollapsed && (
-        <div className="p-6 flex justify-center">
-          <Button
-            onClick={() => setIsCollapsed(false)}
-            className="bg-indigo-600 hover:bg-indigo-700"
-            size="lg"
-          >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Start New Conversation
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex justify-between items-center mb-6">
+    <div className="h-screen flex flex-col max-h-screen overflow-hidden">
+      <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
         <h1
-          className="text-2xl font-bold text-gray-900 dark:text-white"
+          className="text-xl font-bold text-gray-900 dark:text-white"
         >
           AI Assistant
         </h1>
@@ -499,11 +292,9 @@ export default function AIPage() {
         </Button>
       </div>
 
-      <div
-        className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 flex-1 flex flex-col overflow-hidden"
-      >
+      <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-b-lg">
         {showHistory ? (
-          <div className="p-6">
+          <div className="p-6 overflow-y-auto">
             <h2 className="text-lg font-semibold mb-4">
               Chat History
             </h2>
@@ -549,25 +340,17 @@ export default function AIPage() {
                         >
                           <ClockIcon
                             className="h-3 w-3 mr-1"
-                            id={`x39fy2_${index}`}
+                            id={`m3a9mq_${index}`}
                           />
-
                           {chat.date}
                         </div>
                       </div>
                       <p
                         className="text-sm text-gray-600 dark:text-gray-400 mt-1"
-                        id={`40j7jq_${index}`}
+                        id={`9v0lk9_${index}`}
                       >
                         {chat.preview}
                       </p>
-                      <Badge
-                        variant="outline"
-                        className={`mt-2 ${chat.type === "hotline" ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400" : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"}`}
-                        id={`4pxfyg_${index}`}
-                      >
-                        {chat.type === "hotline" ? "Hotline" : "Agent"}
-                      </Badge>
                     </div>
                   </CardContent>
                 </Card>
@@ -577,63 +360,381 @@ export default function AIPage() {
         ) : (
           <Tabs
             defaultValue="hotline"
-            className="flex-1 flex flex-col"
+            className="flex flex-col h-full"
             value={activeTab}
             onValueChange={setActiveTab}
           >
-            <div
-              className="border-b border-gray-200 dark:border-gray-700"
-            >
-              <TabsList className="bg-transparent p-0">
-                <TabsTrigger
-                  value="hotline"
-                  className={`px-6 py-3 ${activeTab === "hotline" ? "border-b-2 border-indigo-600 dark:border-indigo-400" : ""}`}
-                >
-                  Hotline
-                </TabsTrigger>
-                <TabsTrigger
-                  value="agent"
-                  className={`px-6 py-3 ${activeTab === "agent" ? "border-b-2 border-indigo-600 dark:border-indigo-400" : ""}`}
-                >
-                  Proptuna Agent
-                </TabsTrigger>
+            <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+              <TabsList className="bg-transparent border-none h-9">
+                <TabsTrigger value="hotline">AI Hotline</TabsTrigger>
+                <TabsTrigger value="agent">Agent</TabsTrigger>
               </TabsList>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={startNewConversation}
+                className="p-1 h-8"
+              >
+                <PlusIcon className="h-4 w-4 mr-1" />
+                <span className="text-xs">New Chat</span>
+              </Button>
             </div>
 
             <TabsContent
               value="hotline"
-              className="flex-1 flex flex-col p-0 m-0 outline-none"
+              className="p-0 flex-1 flex flex-col h-full relative overflow-hidden data-[state=inactive]:hidden"
+              forceMount
             >
-              {renderChatInterface(
-                messages,
-                inputMessage,
-                setInputMessage,
-                handleSendMessage,
-                chatMode,
-                setChatMode,
-                isHotlineCollapsed,
-                setIsHotlineCollapsed,
-                messagesEndRef,
-                messagesContainerRef,
-              )}
+              {activeTab === "hotline" ? (
+                <>
+                  {/* Messages area - with padding-bottom to make room for fixed input */}
+                  <div
+                    className="absolute inset-0 pt-2 px-4 pb-[140px] overflow-y-auto"
+                    ref={messagesContainerRef}
+                    style={{ scrollBehavior: 'smooth' }}
+                  >
+                    <div className="flex flex-col min-h-full justify-end">
+                      {/* Message bubbles with improved grouping */}
+                      {messages.map((message, index) => {
+                        // Check if this message is from the same sender as the previous
+                        const isPreviousSameSender = index > 0 && messages[index - 1].sender === message.sender;
+                        // Add smaller margin if from same sender for better grouping
+                        const marginClass = isPreviousSameSender ? 'mb-1' : 'mb-4';
+                        
+                        return (
+                          <div
+                            key={index}
+                            className={`flex ${marginClass} ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                            id={`message-${index}`}
+                          >
+                            {/* Only show avatar for first message in a group */}
+                            {message.sender === "ai" && !isPreviousSameSender && (
+                              <Avatar className="h-8 w-8 mr-2 shrink-0" id={`g2otsd_${index}`}>
+                                <AvatarImage
+                                  src="https://github.com/polymet-ai.png"
+                                  alt="AI"
+                                  id={`phhgdq_${index}`}
+                                />
+                                <AvatarFallback id={`82jwph_${index}`}>AI</AvatarFallback>
+                              </Avatar>
+                            )}
+                            
+                            {/* Spacer for message alignment when no avatar */}
+                            {message.sender === "ai" && isPreviousSameSender && (
+                              <div className="w-8 mr-2 shrink-0"></div>
+                            )}
+
+                            <div
+                              className={`max-w-[70%] p-3 ${
+                                message.sender === "user"
+                                  ? "bg-indigo-600 text-white rounded-t-lg rounded-bl-lg"
+                                  : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-t-lg rounded-br-lg"
+                              } ${
+                                // Adjust rounding for message groups
+                                isPreviousSameSender 
+                                  ? message.sender === "user" 
+                                    ? "rounded-r-lg" 
+                                    : "rounded-l-lg"
+                                  : ""
+                              }`}
+                              id={`7dzsr7_${index}`}
+                            >
+                              <div className="text-sm" id={`bcafvr_${index}`}>
+                                {message.text}
+                              </div>
+                              <div
+                                className="text-xs mt-1 opacity-70"
+                                id={`54q6gy_${index}`}
+                              >
+                                {message.timestamp}
+                              </div>
+                            </div>
+
+                            {/* Same for user avatar - only show for first message in group */}
+                            {message.sender === "user" && !isPreviousSameSender && (
+                              <Avatar className="h-8 w-8 ml-2 shrink-0" id={`0wbtqt_${index}`}>
+                                <AvatarImage
+                                  src="https://github.com/yusufhilmi.png"
+                                  alt="User"
+                                  id={`kaw23p_${index}`}
+                                />
+                                <AvatarFallback id={`ezcbyw_${index}`}>U</AvatarFallback>
+                              </Avatar>
+                            )}
+                            
+                            {/* Spacer for message alignment when no avatar */}
+                            {message.sender === "user" && isPreviousSameSender && (
+                              <div className="w-8 ml-2 shrink-0"></div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  </div>
+
+                  {/* Input area - fixed at the bottom with optimized height */}
+                  <div className="absolute bottom-0 left-0 right-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 p-2 border-b border-gray-100 dark:border-gray-700">
+                      <div>
+                        <Select
+                          value={selectedProperty}
+                          onValueChange={setSelectedProperty}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Property" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {properties.map((property, index) => (
+                              <SelectItem
+                                key={property.id}
+                                value={property.id}
+                                id={`jjx8yg_${index}`}
+                              >
+                                {property.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Select
+                          value={selectedPerson}
+                          onValueChange={setSelectedPerson}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Person" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {people.map((person, index) => (
+                              <SelectItem
+                                key={person.id}
+                                value={person.id}
+                                id={`ja2j23_${index}`}
+                              >
+                                {person.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex items-center">
+                        <span
+                          className="text-sm text-gray-600 dark:text-gray-400 mr-2"
+                        >
+                          Create job
+                        </span>
+                        <Switch
+                          checked={createJob}
+                          onCheckedChange={setCreateJob}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 items-center p-3">
+                      <div className="mr-2 hidden sm:block">
+                        <div className="flex space-x-1 h-9">
+                          <Button
+                            variant={chatMode === "chat" ? "default" : "outline"}
+                            onClick={() => setChatMode("chat")}
+                            className="px-3 h-9"
+                            size="sm"
+                          >
+                            <MessageSquareIcon className="h-4 w-4 mr-1" />
+                            <span className="text-xs">Chat</span>
+                          </Button>
+                          <Button
+                            variant={chatMode === "voice" ? "default" : "outline"}
+                            onClick={() => setChatMode("voice")}
+                            className="px-3 h-9"
+                            size="sm"
+                          >
+                            <VolumeIcon className="h-4 w-4 mr-1" />
+                            <span className="text-xs">Voice</span>
+                          </Button>
+                        </div>
+                      </div>
+
+                      {chatMode === "chat" ? (
+                        <>
+                          <Input
+                            value={inputMessage}
+                            onChange={(e) => setInputMessage(e.target.value)}
+                            placeholder="Type your message..."
+                            onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                            className="flex-1 rounded-full border-gray-300 focus:border-indigo-400 focus:ring-indigo-400 h-9"
+                          />
+
+                          <Button onClick={handleSendMessage} className="rounded-full p-2 aspect-square h-9 w-9" size="icon">
+                            <SendIcon className="h-4 w-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          onClick={toggleRecording}
+                          size="lg"
+                          className={`flex-1 ${isRecording ? "bg-red-500 hover:bg-red-600" : ""}`}
+                        >
+                          <MicIcon className="h-5 w-5 mr-2" />
+                          {isRecording ? "Recording..." : "Start Recording"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : null}
             </TabsContent>
 
             <TabsContent
               value="agent"
-              className="flex-1 flex flex-col p-0 m-0 outline-none"
+              className="p-0 flex-1 flex flex-col h-full relative overflow-hidden data-[state=inactive]:hidden"
+              forceMount
             >
-              {renderChatInterface(
-                agentMessages,
-                agentInputMessage,
-                setAgentInputMessage,
-                handleSendAgentMessage,
-                agentChatMode,
-                setAgentChatMode,
-                isAgentCollapsed,
-                setIsAgentCollapsed,
-                agentMessagesEndRef,
-                agentMessagesContainerRef,
-              )}
+              {activeTab === "agent" ? (
+                <>
+                  {/* Messages area - with padding-bottom to make room for fixed input */}
+                  <div
+                    className="absolute inset-0 pt-2 px-4 pb-[72px] overflow-y-auto"
+                    ref={agentMessagesContainerRef}
+                    style={{ scrollBehavior: 'smooth' }}
+                  >
+                    <div className="flex flex-col min-h-full justify-end">
+                      {/* Message bubbles with improved grouping */}
+                      {agentMessages.map((message, index) => {
+                        // Check if this message is from the same sender as the previous
+                        const isPreviousSameSender = index > 0 && agentMessages[index - 1].sender === message.sender;
+                        // Add smaller margin if from same sender for better grouping
+                        const marginClass = isPreviousSameSender ? 'mb-1' : 'mb-4';
+                        
+                        return (
+                          <div
+                            key={index}
+                            className={`flex ${marginClass} ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                            id={`agent-message-${index}`}
+                          >
+                            {/* Only show avatar for first message in a group */}
+                            {message.sender === "ai" && !isPreviousSameSender && (
+                              <Avatar className="h-8 w-8 mr-2 shrink-0" id={`agent-avatar-${index}`}>
+                                <AvatarImage
+                                  src="https://github.com/polymet-ai.png"
+                                  alt="AI"
+                                  id={`agent-avatar-img-${index}`}
+                                />
+                                <AvatarFallback id={`agent-avatar-fallback-${index}`}>AI</AvatarFallback>
+                              </Avatar>
+                            )}
+                            
+                            {/* Spacer for message alignment when no avatar */}
+                            {message.sender === "ai" && isPreviousSameSender && (
+                              <div className="w-8 mr-2 shrink-0"></div>
+                            )}
+
+                            <div
+                              className={`max-w-[70%] p-3 ${
+                                message.sender === "user"
+                                  ? "bg-indigo-600 text-white rounded-t-lg rounded-bl-lg"
+                                  : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-t-lg rounded-br-lg"
+                              } ${
+                                // Adjust rounding for message groups
+                                isPreviousSameSender 
+                                  ? message.sender === "user" 
+                                    ? "rounded-r-lg" 
+                                    : "rounded-l-lg"
+                                  : ""
+                              }`}
+                              id={`agent-message-bubble-${index}`}
+                            >
+                              <div className="text-sm" id={`agent-message-text-${index}`}>
+                                {message.text}
+                              </div>
+                              <div
+                                className="text-xs mt-1 opacity-70"
+                                id={`agent-message-time-${index}`}
+                              >
+                                {message.timestamp}
+                              </div>
+                            </div>
+
+                            {/* Same for user avatar - only show for first message in group */}
+                            {message.sender === "user" && !isPreviousSameSender && (
+                              <Avatar className="h-8 w-8 ml-2 shrink-0" id={`agent-user-avatar-${index}`}>
+                                <AvatarImage
+                                  src="https://github.com/yusufhilmi.png"
+                                  alt="User"
+                                  id={`agent-user-avatar-img-${index}`}
+                                />
+                                <AvatarFallback id={`agent-user-avatar-fallback-${index}`}>U</AvatarFallback>
+                              </Avatar>
+                            )}
+                            
+                            {/* Spacer for message alignment when no avatar */}
+                            {message.sender === "user" && isPreviousSameSender && (
+                              <div className="w-8 ml-2 shrink-0"></div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <div ref={agentMessagesEndRef} />
+                    </div>
+                  </div>
+
+                  {/* Input area - fixed at the bottom */}
+                  <div className="absolute bottom-0 left-0 right-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                    <div className="flex gap-2 items-center p-3">
+                      <div className="mr-2 hidden sm:block">
+                        <div className="flex space-x-1 h-9">
+                          <Button
+                            variant={agentChatMode === "chat" ? "default" : "outline"}
+                            onClick={() => setAgentChatMode("chat")}
+                            className="px-3 h-9"
+                            size="sm"
+                          >
+                            <MessageSquareIcon className="h-4 w-4 mr-1" />
+                            <span className="text-xs">Chat</span>
+                          </Button>
+                          <Button
+                            variant={agentChatMode === "voice" ? "default" : "outline"}
+                            onClick={() => setAgentChatMode("voice")}
+                            className="px-3 h-9"
+                            size="sm"
+                          >
+                            <VolumeIcon className="h-4 w-4 mr-1" />
+                            <span className="text-xs">Voice</span>
+                          </Button>
+                        </div>
+                      </div>
+
+                      {agentChatMode === "chat" ? (
+                        <>
+                          <Input
+                            value={agentInputMessage}
+                            onChange={(e) => setAgentInputMessage(e.target.value)}
+                            placeholder="Type your message..."
+                            onKeyDown={(e) => e.key === "Enter" && handleSendAgentMessage()}
+                            className="flex-1 rounded-full border-gray-300 focus:border-indigo-400 focus:ring-indigo-400 h-9"
+                          />
+
+                          <Button onClick={handleSendAgentMessage} className="rounded-full p-2 aspect-square h-9 w-9" size="icon">
+                            <SendIcon className="h-4 w-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          onClick={toggleRecording}
+                          size="lg"
+                          className={`flex-1 ${isRecording ? "bg-red-500 hover:bg-red-600" : ""}`}
+                        >
+                          <MicIcon className="h-5 w-5 mr-2" />
+                          {isRecording ? "Recording..." : "Start Recording"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : null}
             </TabsContent>
           </Tabs>
         )}
