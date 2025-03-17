@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { StatsCard } from "(components)/stats-card";
 import { JobsTable } from "(components)/jobs-table";
 import { JobDetail } from "(components)/job-detail";
@@ -18,6 +18,12 @@ export default function JobsPage() {
   const [taskType, setTaskType] = useState("all");
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [showNeedsAttention, setShowNeedsAttention] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Simple effect to mark when component is mounted
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Mock data with expanded job details
   const jobsData = [
@@ -289,25 +295,29 @@ export default function JobsPage() {
 
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="w-full sm:w-48">
-          <Select value={taskType} onValueChange={setTaskType}>
-            <SelectTrigger>
-              <SelectValue placeholder="Task type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">
-                All tasks
-              </SelectItem>
-              <SelectItem value="maintenance">
-                Maintenance
-              </SelectItem>
-              <SelectItem value="emergency">
-                Emergency
-              </SelectItem>
-              <SelectItem value="inquiry">
-                Inquiry
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          {mounted ? (
+            <Select value={taskType} onValueChange={setTaskType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Task type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  All tasks
+                </SelectItem>
+                <SelectItem value="maintenance">
+                  Maintenance
+                </SelectItem>
+                <SelectItem value="emergency">
+                  Emergency
+                </SelectItem>
+                <SelectItem value="inquiry">
+                  Inquiry
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="h-10 bg-gray-100 dark:bg-gray-800 rounded-md animate-pulse"></div>
+          )}
         </div>
         <div className="flex-1">
           <Input
@@ -319,7 +329,11 @@ export default function JobsPage() {
         </div>
       </div>
 
-      <JobsTable jobs={filteredJobs} onJobClick={handleJobClick} />
+      {mounted ? (
+        <JobsTable jobs={filteredJobs} onJobClick={handleJobClick} />
+      ) : (
+        <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded-md animate-pulse"></div>
+      )}
 
       {selectedJob && (
         <JobDetail

@@ -8,6 +8,7 @@ import JobsPage from "pages/jobs-page";
 import AIPage from "pages/ai-page";
 import PropertiesPage from "pages/properties-page";
 import UsersPage from "pages/users-page";
+import { Analytics } from "@vercel/analytics/react"
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<string>("jobs");
@@ -36,6 +37,7 @@ export default function App() {
     >
       {renderPage()}
     </Layout>
+    <Analytics />
     </body>
   </html>
 )
