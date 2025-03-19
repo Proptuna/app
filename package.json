@@ -3,10 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "yarn db:setup && next dev",
+    "build": "node scripts/migrate-db.js && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:migrate": "supabase db reset",
+    "db:seed": "supabase db seed",
+    "db:init": "yarn db:migrate && yarn db:seed",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:status": "supabase status",
+    "db:setup": "yarn supabase:start && yarn db:init",
+    "db:reset": "supabase db reset",
+    "migrate:prod": "node scripts/migrate-db.js"
   },
   "dependencies": {
     "@ant-design/icons": "^5.4.0",
@@ -60,6 +69,7 @@
     "@react-three/fiber": "^8.17.6",
     "@refinedev/react-table": "^5.6.13",
     "@shopify/polaris": "^13.9.0",
+    "@supabase/supabase-js": "^2.49.1",
     "@tailwindcss/forms": "^0.5.7",
     "@tailwindcss/typography": "^0.5.13",
     "@tanstack/react-query": "^5.52.3",
@@ -160,6 +170,7 @@
     "tsparticles": "^3.5.0",
     "vaul": "^1.1.2",
     "xlsx": "^0.18.5",
+    "yarn": "^1.22.22",
     "yup": "^1.4.0",
     "zod": "^3.23.8"
   },
@@ -170,7 +181,9 @@
     "eslint": "^8",
     "eslint-config-next": "14.2.16",
     "postcss": "^8",
+    "supabase": "^2.19.7",
     "tailwindcss": "^3.4.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }

@@ -7,7 +7,9 @@ import Layout from "pages/layout";
 import JobsPage from "pages/jobs-page";
 import AIPage from "pages/ai-page";
 import PropertiesPage from "pages/properties-page";
-import UsersPage from "pages/users-page";
+import PeoplePage from "pages/people-page";
+import AccountPage from "pages/account-page";
+import DocumentsPage from "pages/documents-page";
 import { Analytics } from "@vercel/analytics/react"
 
 export default function App() {
@@ -21,10 +23,14 @@ export default function App() {
         return <AIPage />;
       case "properties":
         return <PropertiesPage />;
-      case "users":
-        return <UsersPage />;
+      case "people":
+        return <PeoplePage />;
+      case "documents":
+        return <DocumentsPage />;
+      case "account":
+        return <AccountPage />;
       default:
-        return <JobsPage />;
+        return <AIPage/>;
     }
   };
 

@@ -1,0 +1,9 @@
+{
+  "buildCommand": "next build",
+  "installCommand": "yarn install",
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "buildEnvironment": {
+    "MIGRATE_ON_BUILD": "true"
+  }
+}
