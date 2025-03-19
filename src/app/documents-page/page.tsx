@@ -1,17 +1,8 @@
 "use client"
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -22,157 +13,124 @@ import {
 import {
   PlusIcon,
   SearchIcon,
-  FileTextIcon,
-  FileIcon,
-  ShieldIcon,
-  EyeIcon,
-  EyeOffIcon,
-  BuildingIcon,
-  UserIcon,
-  HomeIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  RefreshCwIcon,
 } from "lucide-react";
-import { DocumentsTable } from "(components)/documents-table";
-
-interface Document {
-  id: string;
-  title: string;
-  type: string;
-  summary: string;
-  isPublic: boolean;
-  lastUpdated: string;
-  associations: Array<{
-    type: string;
-    name: string;
-  }>;
-}
+import { DocumentsAgGrid } from "(components)/documents-ag-grid";
+import { fetchDocuments, Document } from "@/lib/documents-client";
 
 export default function DocumentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [documentType, setDocumentType] = useState("all");
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [prevCursors, setPrevCursors] = useState<string[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [limit] = useState(20);
 
-  // Mock documents data
-  const documents: Document[] = [
-    {
-      id: "1",
-      title: "Maintenance Policy",
-      type: "markdown",
-      summary:
-        "Standard procedures for handling maintenance requests and emergencies",
-      isPublic: true,
-      lastUpdated: "2023-05-15",
-      associations: [
-        { type: "group", name: "Vista Ridge" },
-        { type: "group", name: "Oakwood" },
-      ],
-    },
-    {
-      id: "2",
-      title: "Tenant Handbook",
-      type: "markdown",
-      summary:
-        "Comprehensive guide for tenants including rules, amenities, and contact information",
-      isPublic: true,
-      lastUpdated: "2023-04-22",
-      associations: [
-        { type: "group", name: "Vista Ridge" },
-        { type: "property", name: "935 Woodmoor" },
-      ],
-    },
-    {
-      id: "3",
-      title: "Emergency Contact List",
-      type: "markdown",
-      summary:
-        "List of emergency contacts for various situations including maintenance, security, and medical",
-      isPublic: false,
-      lastUpdated: "2023-06-01",
-      associations: [
-        { type: "group", name: "Vista Ridge" },
-        { type: "group", name: "Oakwood" },
-        { type: "property", name: "935 Woodmoor" },
-      ],
-    },
-    {
-      id: "4",
-      title: "Building Plumbing Plan",
-      type: "file",
-      summary:
-        "Detailed plumbing schematics for the building including main lines and shut-off valves",
-      isPublic: false,
-      lastUpdated: "2022-11-10",
-      associations: [{ type: "property", name: "Vista Ridge Properties" }],
-    },
-    {
-      id: "5",
-      title: "Lease Agreement Template",
-      type: "markdown",
-      summary:
-        "Standard lease agreement template with legal terms and conditions",
-      isPublic: false,
-      lastUpdated: "2023-01-15",
-      associations: [{ type: "user", name: "Property Management Inc." }],
-    },
-    {
-      id: "6",
-      title: "Appliance Manuals",
-      type: "file",
-      summary:
-        "Collection of user manuals for all standard appliances in rental units",
-      isPublic: true,
-      lastUpdated: "2022-08-30",
-      associations: [
-        { type: "group", name: "Vista Ridge" },
-        { type: "group", name: "Oakwood" },
-      ],
-    },
-    {
-      id: "7",
-      title: "Insurance Policy",
-      type: "file",
-      summary:
-        "Property insurance policy documentation including coverage details and claim procedures",
-      isPublic: false,
-      lastUpdated: "2023-02-28",
-      associations: [{ type: "user", name: "Property Management Inc." }],
-    },
-    {
-      id: "8",
-      title: "Escalation Policy - Standard",
-      type: "escalation-policy",
-      summary:
-        "Standard escalation procedures for maintenance and tenant issues",
-      isPublic: true,
-      lastUpdated: "2023-03-10",
-      associations: [{ type: "group", name: "Vista Ridge" }],
-    },
-    {
-      id: "9",
-      title: "Escalation Policy - Emergency",
-      type: "escalation-policy",
-      summary:
-        "Emergency escalation procedures for urgent situations requiring immediate attention",
-      isPublic: true,
-      lastUpdated: "2023-03-12",
-      associations: [
-        { type: "group", name: "Vista Ridge" },
-        { type: "group", name: "Oakwood" },
-      ],
-    },
-  ];
+  // Debounced search
+  const debouncedSearch = useCallback(
+    debounce((query: string) => {
+      // Reset pagination when search changes
+      setCursor(null);
+      setPrevCursors([]);
+      loadDocuments();
+    }, 300),
+    [documentType] // Needed to update when filters change
+  );
 
-  // Filter documents based on search query and document type
-  const filteredDocuments = documents.filter((doc) => {
-    const matchesSearch =
-      doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.associations.some((assoc) =>
-        assoc.name.toLowerCase().includes(searchQuery.toLowerCase()),
-      );
+  // Effect for search query changes
+  useEffect(() => {
+    debouncedSearch(searchQuery);
+  }, [searchQuery, debouncedSearch]);
 
-    const matchesType = documentType === "all" || doc.type === documentType;
+  // Fetch documents from API
+  const loadDocuments = async (loadMore = false) => {
+    setIsLoading(true);
+    try {
+      const params: any = { 
+        limit,
+        title: searchQuery || undefined,
+      };
+      
+      // Add cursor for pagination if loading more
+      if (loadMore && cursor) {
+        params.cursor = cursor;
+      } else if (!loadMore) {
+        // Reset cursor when not loading more (fresh search/filter)
+        setCursor(null);
+        setPrevCursors([]);
+      }
+      
+      if (documentType !== "all") {
+        params.type = documentType;
+      }
+      
+      const response = await fetchDocuments(params);
+      
+      if (loadMore) {
+        setDocuments(prevDocs => [...prevDocs, ...response.data]);
+      } else {
+        setDocuments(response.data);
+      }
+      
+      setHasMore(response.has_more);
+      
+      if (response.next_cursor) {
+        // Save current cursor to history before setting new one
+        if (cursor) {
+          setPrevCursors(prev => [...prev, cursor]);
+        }
+        setCursor(response.next_cursor);
+      }
+      
+      setError(null);
+    } catch (err: any) {
+      console.error("Error fetching documents:", err);
+      setError(err.message || "Failed to load documents");
+      setDocuments([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    return matchesSearch && matchesType;
-  });
+  // Initial load
+  useEffect(() => {
+    loadDocuments();
+  }, [documentType]);
+
+  const handleLoadMore = () => {
+    loadDocuments(true);
+  };
+
+  const handlePrevious = () => {
+    if (prevCursors.length > 0) {
+      // Get the previous cursor
+      const prevCursor = prevCursors[prevCursors.length - 1];
+      
+      // Remove it from history
+      setPrevCursors(prev => prev.slice(0, prev.length - 1));
+      
+      // Set it as current cursor
+      setCursor(prevCursor);
+      
+      // Load with that cursor
+      loadDocuments(true);
+    } else {
+      // If no previous cursors, load from the beginning
+      setCursor(null);
+      loadDocuments();
+    }
+  };
+
+  const handleRefresh = () => {
+    setCursor(null);
+    setPrevCursors([]);
+    loadDocuments();
+  };
 
   const handleAddDocument = () => {
     // In a real app, this would open a modal to add a new document
@@ -235,7 +193,61 @@ export default function DocumentsPage() {
         </div>
       </div>
 
-      <DocumentsTable documents={filteredDocuments} />
+      {isLoading && documents.length === 0 ? (
+        <div className="flex justify-center p-12">Loading documents...</div>
+      ) : error ? (
+        <div className="p-4 text-red-500 bg-red-50 rounded-md">{error}</div>
+      ) : (
+        <>
+          <DocumentsAgGrid documents={documents} />
+          
+          <div className="flex justify-between mt-6">
+            <Button 
+              variant="outline" 
+              onClick={handlePrevious}
+              disabled={prevCursors.length === 0}
+            >
+              <ChevronLeftIcon className="h-4 w-4 mr-2" />
+              Previous
+            </Button>
+            
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
+            >
+              <RefreshCwIcon className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              onClick={handleLoadMore}
+              disabled={!hasMore || isLoading}
+            >
+              {isLoading ? "Loading..." : "Load More"}
+              {!isLoading && <ChevronRightIcon className="h-4 w-4 ml-2" />}
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
+}
+
+// Debounce helper function
+function debounce<T extends (...args: any[]) => any>(
+  fn: T,
+  delay: number
+): (...args: Parameters<T>) => void {
+  let timeoutId: NodeJS.Timeout | null = null;
+  
+  return function(this: any, ...args: Parameters<T>) {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    
+    timeoutId = setTimeout(() => {
+      fn.apply(this, args);
+    }, delay);
+  };
 }

@@ -11,445 +11,539 @@ Our API will follow these principles:
 - Return appropriate HTTP status codes
 - Use plural nouns for resource collections (e.g., `/documents` not `/document`)
 
-### 2. Authentication and Authorization
-
-- Use Clerk for authentication
-- Inject organization context from auth tokens
-- Enforce data isolation between organizations
-- Support role-based access control
-
-### 3. Request/Response Format
+### 2. Request/Response Format
 
 - Use JSON for all request and response bodies
 - Provide consistent response structures
 - Include metadata for pagination and filtering
 - Return detailed error messages and codes
 
-### 4. Pagination (Stripe-style)
+### 3. Pagination (Stripe-style)
 
 - Default limit of 10 items per page, maximum of 100
 - Use cursor-based pagination with `starting_after` and `ending_before` parameters
 - Include `has_more` flag in responses
 - Provide `total_count` when available and requested
 
-### 5. Error Handling
+### 4. Error Handling
 
 - Use standard HTTP status codes
 - Include error codes and messages
 - Provide actionable error information
 - Log detailed errors on the server
 
-## Authentication with Clerk
-
-### Overview
-
-We'll use Clerk for authentication, which provides:
-- User management
-- Organization/team management
-- Multi-factor authentication
-- OAuth providers
-- Session management
-
-### Integration
-
-1. **Backend Integration**:
-   - Install Clerk SDK
-   - Set up middleware to verify JWTs from Clerk
-   - Extract user and organization information from JWTs
-
-2. **Frontend Integration**:
-   - Use Clerk's React components for auth UI
-   - Implement sign-in, sign-up, and organization switching
-
-### Local Development with Clerk
-
-For local development, we'll set up a sandbox mode that allows:
-
-1. **Development Environment Detection**:
-   - Automatically detect development environment
-   - Enable sandbox features based on environment
-
-2. **Sandbox Authentication**:
-   - Implement a `/api/v1/auth/sandbox/login` endpoint
-   - Allow bypassing Clerk in development
-   - Support default credentials for testing
-
-3. **Configuration**:
-   - Use environment variables for Clerk API keys
-   - Support a `.env.local` file for development settings
-   - Allow override of sandbox organization and user
-
 ## API Endpoints
 
-### Authentication and Organization Management
+### Documents API
 
 #### Base URL
-```
-/api/v1/auth
-/api/v1/organizations
+
+```bash
+/api/v1/documents
 ```
 
-#### Authentication Endpoints
+#### API Versioning
 
-##### 1. Get Current User
+We'll use URL path versioning for our API to ensure backward compatibility as the API evolves:
+
+- All API routes will include a version number (e.g., `/api/v1/documents`)
+- Major version changes (v1, v2, etc.) will be used for breaking changes
+- Minor updates that maintain backward compatibility will be implemented within the same version
+- When a new version is released, previous versions will be maintained for a deprecation period
+
+#### Implementation with Next.js App Router
+
+We'll implement the Documents API using Next.js App Router and the route handlers feature, which allows us to create API endpoints directly in the app directory.
+
+```bash
+src/
+  app/
+    api/
+      v1/
+        documents/
+          route.ts                 # GET (list), POST (create)
+          [id]/
+            route.ts               # GET, PUT, DELETE
+            properties/
+              route.ts             # POST (associate)
+              [propertyId]/
+                route.ts           # DELETE (remove association)
+            people/
+              route.ts             # POST (associate)
+              [personId]/
+                route.ts           # DELETE (remove association)
+            groups/
+              route.ts             # POST (associate)
+              [groupId]/
+                route.ts           # DELETE (remove association)
 ```
-GET /api/v1/auth/me
+
+#### Document Endpoints
+
+##### 1. List Documents
+
+```bash
+GET /api/v1/documents
+```
+
+**Query Parameters:**
+
+```bash
+limit: number (default: 10, max: 100)
+starting_after: string (document ID to start after)
+ending_before: string (document ID to end before)
+type: string (filter by document type)
+visibility: string (filter by visibility)
+property_id: uuid (filter by associated property)
+person_id: uuid (filter by associated person)
+group_id: uuid (filter by associated group)
+```
+
+**Response:**
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "title": "string",
+      "visibility": "internal|external|confidential",
+      "type": "string",
+      "metadata": {},
+      "created_at": "timestamp",
+      "updated_at": "timestamp",
+      "version": number
+    }
+  ],
+  "has_more": boolean,
+  "total_count": number
+}
+```
+
+##### 2. Get Document
+
+```bash
+GET /api/v1/documents/:id
 ```
 
 **Description:**
-Returns the current authenticated user with organization context.
+Returns details for a specific document.
 
 **Response:**
+
 ```json
 {
   "id": "uuid",
-  "clerk_id": "string",
-  "name": "string",
-  "primary_email": "string",
-  "primary_phone": "string",
-  "image_url": "string",
-  "role": "admin|manager|maintenance|leasing_agent|support",
-  "is_active": boolean,
+  "title": "string",
+  "data": "string",
+  "visibility": "internal|external|confidential",
+  "type": "string",
+  "metadata": {},
   "created_at": "timestamp",
   "updated_at": "timestamp",
-  "organization": {
-    "id": "uuid",
-    "name": "string",
-    "slug": "string",
-    "subscription_tier": "string",
-    "role": "owner|admin|member"
+  "version": number,
+  "associations": {
+    "properties": [
+      {
+        "id": "uuid",
+        "address": "string"
+      }
+    ],
+    "people": [
+      {
+        "id": "uuid",
+        "name": "string",
+        "type": "tenant|owner"
+      }
+    ],
+    "groups": [
+      {
+        "id": "uuid",
+        "name": "string"
+      }
+    ]
   }
 }
 ```
 
-##### 2. Development Sandbox Authentication
-```
-POST /api/v1/auth/sandbox/login
-```
+##### 3. Create Document
 
-**Description:**
-Endpoint for local development to bypass Clerk authentication.
+```bash
+POST /api/v1/documents
+```
 
 **Request Body:**
+
 ```json
 {
-  "organization_id": "uuid", // Optional, will use default if not provided
-  "user_id": "uuid" // Optional, will use default if not provided
+  "title": "string",
+  "data": "string",
+  "visibility": "internal|external|confidential",
+  "type": "string",
+  "metadata": {},
+  "associations": {
+    "property_ids": ["uuid"],
+    "person_ids": ["uuid"],
+    "group_ids": ["uuid"]
+  }
 }
 ```
 
 **Response:**
-```json
-{
-  "token": "string",
-  "user": {
-    // User details
-  },
-  "organization": {
-    // Organization details
-  },
-  "dev_mode": true
-}
-```
+Same as Get Document response
 
-#### Organization Endpoints
+##### 4. Update Document
 
-##### 1. List Organizations (for users with multiple organizations)
+```bash
+PUT /api/v1/documents/:id
 ```
-GET /api/v1/organizations
-```
-
-**Description:**
-Returns all organizations the current user is a member of.
-
-**Response:**
-```json
-{
-  "data": [
-    {
-      "id": "uuid",
-      "name": "string",
-      "slug": "string",
-      "primary_domain": "string",
-      "image_url": "string",
-      "subscription_tier": "string",
-      "user_role": "owner|admin|member"
-    }
-  ],
-  "has_more": boolean,
-  "total_count": number
-}
-```
-
-##### 2. Get Organization
-```
-GET /api/v1/organizations/:id
-```
-
-**Description:**
-Returns details for a specific organization.
-
-**Response:**
-```json
-{
-  "id": "uuid", 
-  "clerk_id": "string",
-  "name": "string",
-  "slug": "string",
-  "primary_domain": "string",
-  "status": "active|suspended|trial|canceled",
-  "subscription_tier": "string",
-  "subscription_expires_at": "timestamp",
-  "image_url": "string",
-  "settings": {},
-  "created_at": "timestamp",
-  "updated_at": "timestamp"
-}
-```
-
-##### 3. Create Organization
-```
-POST /api/v1/organizations
-```
-
-**Description:**
-Creates a new organization and adds the current user as an owner.
 
 **Request Body:**
+
 ```json
 {
-  "name": "string",
-  "slug": "string",
-  "primary_domain": "string",
-  "image_url": "string",
-  "settings": {}
+  "title": "string",
+  "data": "string",
+  "visibility": "internal|external|confidential",
+  "type": "string",
+  "metadata": {}
 }
 ```
 
 **Response:**
-Same as Get Organization
+Same as Get Document response
 
-##### 4. Update Organization
-```
-PUT /api/v1/organizations/:id
+##### 5. Delete Document
+
+```bash
+DELETE /api/v1/documents/:id
 ```
 
-**Description:**
-Updates an existing organization.
+**Response:**
+
+```json
+{
+  "success": true,
+  "id": "uuid"
+}
+```
+
+##### 6. Associate Document with Property
+
+```bash
+POST /api/v1/documents/:id/properties
+```
 
 **Request Body:**
-Same fields as Create Organization
 
-**Response:**
-Same as Get Organization
-
-##### 5. List Organization Members
-```
-GET /api/v1/organizations/:id/members
-```
-
-**Description:**
-Returns all members of an organization.
-
-**Response:**
 ```json
 {
-  "data": [
-    {
-      "id": "uuid",
-      "user_id": "uuid",
-      "name": "string",
-      "email": "string",
-      "role": "owner|admin|member",
-      "image_url": "string",
-      "joined_at": "timestamp"
-    }
-  ],
-  "has_more": boolean,
-  "total_count": number
-}
-```
-
-##### 6. Add Organization Member
-```
-POST /api/v1/organizations/:id/members
-```
-
-**Description:**
-Invites a new member to the organization.
-
-**Request Body:**
-```json
-{
-  "email": "string",
-  "role": "admin|member"
+  "property_id": "uuid",
+  "metadata": {}
 }
 ```
 
 **Response:**
+
 ```json
 {
   "id": "uuid",
-  "user_id": "uuid",
-  "name": "string",
-  "email": "string",
-  "role": "owner|admin|member",
-  "image_url": "string",
-  "joined_at": "timestamp",
-  "invitation_sent": boolean
+  "document_id": "uuid",
+  "property_id": "uuid",
+  "metadata": {},
+  "created_at": "timestamp"
 }
 ```
 
-##### 7. Update Organization Member
-```
-PUT /api/v1/organizations/:id/members/:user_id
-```
+##### 7. Associate Document with Person
 
-**Description:**
-Updates a member's role in the organization.
+```bash
+POST /api/v1/documents/:id/people
+```
 
 **Request Body:**
+
 ```json
 {
-  "role": "admin|member"
+  "person_id": "uuid",
+  "metadata": {}
 }
 ```
 
 **Response:**
-Same as Add Organization Member response
 
-##### 8. Remove Organization Member
-```
-DELETE /api/v1/organizations/:id/members/:user_id
+```json
+{
+  "id": "uuid",
+  "document_id": "uuid",
+  "person_id": "uuid",
+  "metadata": {},
+  "created_at": "timestamp"
+}
 ```
 
-**Description:**
-Removes a member from the organization.
+##### 8. Associate Document with Group
+
+```bash
+POST /api/v1/documents/:id/groups
+```
+
+**Request Body:**
+
+```json
+{
+  "group_id": "uuid",
+  "metadata": {}
+}
+```
 
 **Response:**
+
+```json
+{
+  "id": "uuid",
+  "document_id": "uuid",
+  "group_id": "uuid",
+  "metadata": {},
+  "created_at": "timestamp"
+}
+```
+
+##### 9. Remove Document Association
+
+```bash
+DELETE /api/v1/documents/:id/properties/:property_id
+DELETE /api/v1/documents/:id/people/:person_id
+DELETE /api/v1/documents/:id/groups/:group_id
+```
+
+**Response:**
+
 ```json
 {
   "success": true
 }
 ```
 
+## API Implementation Progress
+
+### Completed
+- **Documents API**
+  - Implemented data access layer with Supabase integration
+  - Created RESTful API routes in Next.js with versioning (v1)
+  - Added support for associating documents with properties, people, and groups
+  - Created client-side service for accessing the API
+  - Integrated AG Grid for improved document display and filtering
+
+### Next Steps
+- Complete authentication and authorization layer
+- Implement document versioning
+- Add document type-specific handling for escalation policies
+- Develop Jobs and Tasks APIs
+- Implement Conversations API
+
 ## Implementation Plan
 
-### Phase 1: Authentication and Organization Management
-- [ ] Setup project structure and dependencies
-- [ ] Integrate Clerk SDK
-- [ ] Create middleware for JWT verification
-- [ ] Implement organization context middleware
-- [ ] Create user endpoint (/api/v1/auth/me)
-- [ ] Create organization management endpoints
-- [ ] Implement sandbox authentication for local development
-  - [ ] Add configuration option for auto-login in development
-  - [ ] Create middleware to inject default credentials in dev mode
-  - [ ] Support environment variable configuration for default org/user
-- [ ] Write tests for authentication and organization management
+### Documents API Implementation
 
-### Setup Instructions for Clerk
+1. **Setup API Routes Structure**:
 
-1. **Install Dependencies**:
-   ```bash
-   npm install @clerk/clerk-sdk-node
-   # or
-   yarn add @clerk/clerk-sdk-node
-   ```
+   - Create the directory structure for API routes in the Next.js app directory
+   - Define route handlers for each endpoint
 
-2. **Environment Variables**:
-   Create a `.env` file with the following variables:
-   ```
-   CLERK_API_KEY=your_api_key
-   CLERK_JWT_KEY=your_jwt_key
-   CLERK_FRONTEND_API=your_frontend_api
-   DEVELOPMENT_MODE=true
-   SANDBOX_ORG_ID=default_org_id
-   SANDBOX_USER_ID=default_user_id
-   ```
+2. **Create Database Access Layer**:
 
-3. **Middleware Setup**:
-   ```javascript
-   // middleware/auth.js
-   const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
-   
-   // Production auth middleware
-   const requireAuth = ClerkExpressRequireAuth({
-     // Clerk options
-   });
-   
-   // Development sandbox middleware
-   const sandboxAuth = (req, res, next) => {
-     if (process.env.DEVELOPMENT_MODE !== 'true') {
-       return next(new Error('Sandbox mode only available in development'));
-     }
-     
-     // Get user and org from request or use defaults
-     const userId = req.body.user_id || process.env.SANDBOX_USER_ID;
-     const orgId = req.body.organization_id || process.env.SANDBOX_ORG_ID;
-     
-     // Fetch user and org from database
-     // Attach to request object
-     
-     next();
-   };
-   
-   // Combined middleware that chooses based on environment
-   const auth = (req, res, next) => {
-     if (process.env.DEVELOPMENT_MODE === 'true' && req.path === '/api/v1/auth/sandbox/login') {
-       return sandboxAuth(req, res, next);
-     }
-     
-     return requireAuth(req, res, next);
-   };
-   
-   module.exports = { requireAuth, sandboxAuth, auth };
-   ```
+   - Define Supabase queries for document operations
+   - Implement pagination and filtering
+   - Handle document associations
 
-4. **Organization Context Middleware**:
-   ```javascript
-   // middleware/organization.js
-   const organizationContext = (req, res, next) => {
-     // In production, get org ID from Clerk session
-     const orgId = req.auth?.orgId || req.body.organization_id;
-     
-     if (!orgId) {
-       return res.status(400).json({ error: 'Organization context required' });
-     }
-     
-     // Fetch organization from database
-     // Attach to request
-     
-     next();
-   };
-   
-   module.exports = { organizationContext };
-   ```
+3. **Frontend Integration**:
+   - Update the documents page to use the API
+   - Implement document creation, editing, and deletion
+   - Add association management UI
+   - **Use AG Grid for tables**: We'll replace the current table implementation with AG Grid (https://www.ag-grid.com/) for enhanced data grid capabilities, including:
+     - Advanced filtering and sorting
+     - Row grouping
+     - Column resizing and reordering
+     - Excel-like features
+     - Improved performance with large datasets
+     - we want the ability to add or remove associations and have them persist
 
-5. **Express Setup**:
-   ```javascript
-   const express = require('express');
-   const { auth } = require('./middleware/auth');
-   const { organizationContext } = require('./middleware/organization');
-   
-   const app = express();
-   
-   // Auth routes (no org context required)
-   app.get('/api/v1/auth/me', auth, (req, res) => {
-     // Return current user
-   });
-   
-   app.post('/api/v1/auth/sandbox/login', (req, res) => {
-     // Handle sandbox login
-   });
-   
-   // Organization routes
-   app.use('/api/v1/organizations', auth, organizationContext);
-   app.get('/api/v1/organizations', (req, res) => {
-     // List organizations
-   });
-   
-   // ... other routes
-   ```
+### Implementation with Next.js and Supabase
 
-This focused implementation gives us a solid foundation for authentication and organization management, which we can build upon as we develop the rest of the API.
+#### 1. Supabase Document Data Access Layer
+
+```typescript
+// src/lib/documents.ts
+import { supabase } from "./supabase";
+
+export interface Document {
+  id: string;
+  organization_id: string;
+  title: string;
+  data: string;
+  visibility: "internal" | "external" | "confidential";
+  type: string;
+  metadata: Record<string, any>;
+  created_at?: string;
+  updated_at?: string;
+  version: number;
+}
+
+export interface DocumentAssociation {
+  id: string;
+  document_id: string;
+  property_id?: string;
+  person_id?: string;
+  group_id?: string;
+  metadata: Record<string, any>;
+  created_at?: string;
+}
+
+export async function getDocuments(params: {
+  limit?: number;
+  startingAfter?: string;
+  endingBefore?: string;
+  type?: string;
+  visibility?: string;
+  propertyId?: string;
+  personId?: string;
+  groupId?: string;
+  organizationId: string;
+}) {
+  let query = supabase
+    .from("documents")
+    .select("*", { count: "exact" })
+    .eq("organization_id", params.organizationId);
+
+  // Apply filters
+  if (params.type) {
+    query = query.eq("type", params.type);
+  }
+
+  if (params.visibility) {
+    query = query.eq("visibility", params.visibility);
+  }
+
+  // Apply pagination
+  const limit = Math.min(params.limit || 10, 100);
+  query = query.limit(limit);
+
+  if (params.startingAfter) {
+    const startDoc = await supabase
+      .from("documents")
+      .select("created_at")
+      .eq("id", params.startingAfter)
+      .single();
+
+    if (startDoc.data) {
+      query = query.gt("created_at", startDoc.data.created_at);
+    }
+  }
+
+  if (params.endingBefore) {
+    const endDoc = await supabase
+      .from("documents")
+      .select("created_at")
+      .eq("id", params.endingBefore)
+      .single();
+
+    if (endDoc.data) {
+      query = query.lt("created_at", endDoc.data.created_at);
+    }
+  }
+
+  // Handle property, person, and group filtering through associations
+  if (params.propertyId) {
+    const propertyDocs = await supabase
+      .from("document_property_associations")
+      .select("document_id")
+      .eq("property_id", params.propertyId);
+
+    if (propertyDocs.data) {
+      const docIds = propertyDocs.data.map((d) => d.document_id);
+      query = query.in("id", docIds);
+    }
+  }
+
+  // Execute query and format response
+  const { data, count, error } = await query.order("created_at", {
+    ascending: false,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return {
+    data,
+    has_more: (count || 0) > (data?.length || 0),
+    total_count: count || 0,
+  };
+}
+
+// More document functions here...
+```
+
+#### 2. Next.js App Router API Implementation
+
+```typescript
+// src/app/api/v1/documents/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { getDocuments, createDocument } from "@/lib/documents";
+
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const limit = parseInt(searchParams.get("limit") || "10", 10);
+  const startingAfter = searchParams.get("starting_after") || undefined;
+  const endingBefore = searchParams.get("ending_before") || undefined;
+  const type = searchParams.get("type") || undefined;
+  const visibility = searchParams.get("visibility") || undefined;
+  const propertyId = searchParams.get("property_id") || undefined;
+  const personId = searchParams.get("person_id") || undefined;
+  const groupId = searchParams.get("group_id") || undefined;
+
+  // In a real implementation, get organizationId from auth context
+  const organizationId = "123e4567-e89b-12d3-a456-426614174000";
+
+  try {
+    const result = await getDocuments({
+      limit,
+      startingAfter,
+      endingBefore,
+      type,
+      visibility,
+      propertyId,
+      personId,
+      groupId,
+      organizationId,
+    });
+
+    return NextResponse.json(result);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+
+    // Validation would go here
+
+    // In a real implementation, get organizationId from auth context
+    const organizationId = "123e4567-e89b-12d3-a456-426614174000";
+
+    const document = await createDocument({
+      ...body,
+      organization_id: organizationId,
+    });
+
+    return NextResponse.json(document, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+```
+
+This approach gives us a solid foundation for the Documents API using Next.js App Router and Supabase, which we can build upon to expand to other API areas later.
