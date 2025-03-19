@@ -20,8 +20,6 @@ export interface Document {
 }
 
 export interface DocumentListParams {
-  limit?: number;
-  cursor?: string;
   title?: string;
   type?: string;
   visibility?: string;
@@ -34,17 +32,14 @@ export interface DocumentListResponse {
   data: Document[];
   has_more: boolean;
   total_count?: number;
-  next_cursor?: string | null;
 }
 
 /**
- * Fetch a list of documents with filtering and pagination
+ * Fetch a list of documents with filtering
  */
 export async function fetchDocuments(params: DocumentListParams = {}): Promise<DocumentListResponse> {
   const queryParams = new URLSearchParams();
   
-  if (params.limit) queryParams.append("limit", params.limit.toString());
-  if (params.cursor) queryParams.append("cursor", params.cursor);
   if (params.title) queryParams.append("title", params.title);
   if (params.type) queryParams.append("type", params.type);
   if (params.visibility) queryParams.append("visibility", params.visibility);
@@ -278,6 +273,32 @@ export async function removeDocumentGroupAssociation(
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || "Failed to remove group association");
+  }
+  
+  return response.json();
+}
+
+/**
+ * Search for documents across the database
+ */
+export async function searchDocuments(params: {
+  query: string;
+  type?: string;
+  visibility?: string;
+}): Promise<DocumentListResponse> {
+  const queryParams = new URLSearchParams();
+  
+  queryParams.append("query", params.query);
+  if (params.type) queryParams.append("type", params.type);
+  if (params.visibility) queryParams.append("visibility", params.visibility);
+  
+  const url = `/api/v1/documents/search?${queryParams.toString()}`;
+  
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to search documents");
   }
   
   return response.json();

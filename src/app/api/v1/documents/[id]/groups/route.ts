@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCurrentOrganizationId } from "@/lib/organization";
 import { associateDocumentWithGroup } from "@/lib/documents";
 
 /**
@@ -23,7 +24,7 @@ export async function POST(
     }
     
     // In a real implementation, get organizationId from auth context
-    const organizationId = "123e4567-e89b-12d3-a456-426614174000";
+    const organizationId = getCurrentOrganizationId();
     
     const association = await associateDocumentWithGroup(
       documentId,

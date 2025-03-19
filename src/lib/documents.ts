@@ -2,7 +2,6 @@ import { supabase } from "./supabase";
 
 export interface Document {
   id: string;
-  organization_id: string;
   title: string;
   data: string;
   visibility: "internal" | "external" | "confidential";
@@ -24,23 +23,18 @@ export interface DocumentAssociation {
 }
 
 /**
- * Get a list of documents with pagination and filtering
+ * Get a list of documents with filtering
  */
 export async function getDocuments(params: {
-  limit?: number;
-  startingAfter?: string;
-  endingBefore?: string;
   type?: string;
   visibility?: string;
   propertyId?: string;
   personId?: string;
   groupId?: string;
-  organizationId: string;
 }) {
   let query = supabase
     .from("documents")
-    .select("*", { count: "exact" })
-    .eq("organization_id", params.organizationId);
+    .select("*", { count: "exact" });
 
   // Apply filters
   if (params.type) {
@@ -49,34 +43,6 @@ export async function getDocuments(params: {
 
   if (params.visibility) {
     query = query.eq("visibility", params.visibility);
-  }
-
-  // Apply pagination
-  const limit = Math.min(params.limit || 10, 100);
-  query = query.limit(limit);
-
-  if (params.startingAfter) {
-    const startDoc = await supabase
-      .from("documents")
-      .select("created_at")
-      .eq("id", params.startingAfter)
-      .single();
-
-    if (startDoc.data) {
-      query = query.gt("created_at", startDoc.data.created_at);
-    }
-  }
-
-  if (params.endingBefore) {
-    const endDoc = await supabase
-      .from("documents")
-      .select("created_at")
-      .eq("id", params.endingBefore)
-      .single();
-
-    if (endDoc.data) {
-      query = query.lt("created_at", endDoc.data.created_at);
-    }
   }
 
   // Handle property, person, and group filtering through associations
@@ -117,9 +83,7 @@ export async function getDocuments(params: {
   }
 
   // Execute query and format response
-  const { data, count, error } = await query.order("created_at", {
-    ascending: false,
-  });
+  const { data, count, error } = await query;
 
   if (error) {
     throw error;
@@ -127,7 +91,6 @@ export async function getDocuments(params: {
 
   return {
     data,
-    has_more: (count || 0) > (data?.length || 0),
     total_count: count || 0,
   };
 }
@@ -135,12 +98,11 @@ export async function getDocuments(params: {
 /**
  * Get a single document by ID
  */
-export async function getDocumentById(id: string, organizationId: string) {
+export async function getDocumentById(id: string) {
   const { data: document, error } = await supabase
     .from("documents")
     .select("*")
     .eq("id", id)
-    .eq("organization_id", organizationId)
     .single();
 
   if (error) {
@@ -169,7 +131,6 @@ export async function createDocument(document: {
   visibility: "internal" | "external" | "confidential";
   type: string;
   metadata?: Record<string, any>;
-  organization_id: string;
   associations?: {
     property_ids?: string[];
     person_ids?: string[];
@@ -185,7 +146,6 @@ export async function createDocument(document: {
       visibility: document.visibility,
       type: document.type,
       metadata: document.metadata || {},
-      organization_id: document.organization_id,
       version: 1, // Initial version
     })
     .select()
@@ -201,7 +161,7 @@ export async function createDocument(document: {
   }
 
   // Get the document with its associations
-  return getDocumentById(newDocument.id, document.organization_id);
+  return getDocumentById(newDocument.id);
 }
 
 /**
@@ -215,15 +175,13 @@ export async function updateDocument(
     visibility?: "internal" | "external" | "confidential";
     type?: string;
     metadata?: Record<string, any>;
-  },
-  organizationId: string
+  }
 ) {
   // Get the current document to increment version
   const { data: currentDocument, error: fetchError } = await supabase
     .from("documents")
     .select("version")
     .eq("id", id)
-    .eq("organization_id", organizationId)
     .single();
 
   if (fetchError) {
@@ -243,7 +201,6 @@ export async function updateDocument(
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
-    .eq("organization_id", organizationId)
     .select()
     .single();
 
@@ -252,19 +209,18 @@ export async function updateDocument(
   }
 
   // Get the document with its associations
-  return getDocumentById(id, organizationId);
+  return getDocumentById(id);
 }
 
 /**
  * Delete a document
  */
-export async function deleteDocument(id: string, organizationId: string) {
-  // Check if document exists and belongs to organization
+export async function deleteDocument(id: string) {
+  // Check if document exists
   const { data: document, error: fetchError } = await supabase
     .from("documents")
     .select("id")
     .eq("id", id)
-    .eq("organization_id", organizationId)
     .single();
 
   if (fetchError) {
@@ -286,8 +242,7 @@ export async function deleteDocument(id: string, organizationId: string) {
   const { error: deleteError } = await supabase
     .from("documents")
     .delete()
-    .eq("id", id)
-    .eq("organization_id", organizationId);
+    .eq("id", id);
 
   if (deleteError) {
     throw deleteError;
@@ -393,31 +348,28 @@ export async function createDocumentAssociations(
 export async function associateDocumentWithProperty(
   documentId: string,
   propertyId: string,
-  metadata: Record<string, any> = {},
-  organizationId: string
+  metadata: Record<string, any> = {}
 ) {
-  // Verify document exists and belongs to organization
+  // Verify document exists
   const { data: document, error: docError } = await supabase
     .from("documents")
     .select("id")
     .eq("id", documentId)
-    .eq("organization_id", organizationId)
     .single();
 
   if (docError || !document) {
-    throw new Error(`Document with ID ${documentId} not found or not accessible`);
+    throw new Error(`Document with ID ${documentId} not found`);
   }
 
-  // Verify property exists and belongs to organization
+  // Verify property exists
   const { data: property, error: propError } = await supabase
     .from("properties")
     .select("id")
     .eq("id", propertyId)
-    .eq("account_id", organizationId)
     .single();
 
   if (propError || !property) {
-    throw new Error(`Property with ID ${propertyId} not found or not accessible`);
+    throw new Error(`Property with ID ${propertyId} not found`);
   }
 
   // Create association
@@ -444,31 +396,28 @@ export async function associateDocumentWithProperty(
 export async function associateDocumentWithPerson(
   documentId: string,
   personId: string,
-  metadata: Record<string, any> = {},
-  organizationId: string
+  metadata: Record<string, any> = {}
 ) {
-  // Verify document exists and belongs to organization
+  // Verify document exists
   const { data: document, error: docError } = await supabase
     .from("documents")
     .select("id")
     .eq("id", documentId)
-    .eq("organization_id", organizationId)
     .single();
 
   if (docError || !document) {
-    throw new Error(`Document with ID ${documentId} not found or not accessible`);
+    throw new Error(`Document with ID ${documentId} not found`);
   }
 
-  // Verify person exists and belongs to organization
+  // Verify person exists
   const { data: person, error: personError } = await supabase
     .from("people")
     .select("id")
     .eq("id", personId)
-    .eq("account_id", organizationId)
     .single();
 
   if (personError || !person) {
-    throw new Error(`Person with ID ${personId} not found or not accessible`);
+    throw new Error(`Person with ID ${personId} not found`);
   }
 
   // Create association
@@ -495,31 +444,28 @@ export async function associateDocumentWithPerson(
 export async function associateDocumentWithGroup(
   documentId: string,
   groupId: string,
-  metadata: Record<string, any> = {},
-  organizationId: string
+  metadata: Record<string, any> = {}
 ) {
-  // Verify document exists and belongs to organization
+  // Verify document exists
   const { data: document, error: docError } = await supabase
     .from("documents")
     .select("id")
     .eq("id", documentId)
-    .eq("organization_id", organizationId)
     .single();
 
   if (docError || !document) {
-    throw new Error(`Document with ID ${documentId} not found or not accessible`);
+    throw new Error(`Document with ID ${documentId} not found`);
   }
 
-  // Verify group exists and belongs to organization
+  // Verify group exists
   const { data: group, error: groupError } = await supabase
     .from("groups")
     .select("id")
     .eq("id", groupId)
-    .eq("account_id", organizationId)
     .single();
 
   if (groupError || !group) {
-    throw new Error(`Group with ID ${groupId} not found or not accessible`);
+    throw new Error(`Group with ID ${groupId} not found`);
   }
 
   // Create association
@@ -545,19 +491,17 @@ export async function associateDocumentWithGroup(
  */
 export async function removeDocumentPropertyAssociation(
   documentId: string,
-  propertyId: string,
-  organizationId: string
+  propertyId: string
 ) {
-  // Verify document exists and belongs to organization
+  // Verify document exists
   const { data: document, error: docError } = await supabase
     .from("documents")
     .select("id")
     .eq("id", documentId)
-    .eq("organization_id", organizationId)
     .single();
 
   if (docError || !document) {
-    throw new Error(`Document with ID ${documentId} not found or not accessible`);
+    throw new Error(`Document with ID ${documentId} not found`);
   }
 
   // Remove association
@@ -579,19 +523,17 @@ export async function removeDocumentPropertyAssociation(
  */
 export async function removeDocumentPersonAssociation(
   documentId: string,
-  personId: string,
-  organizationId: string
+  personId: string
 ) {
-  // Verify document exists and belongs to organization
+  // Verify document exists
   const { data: document, error: docError } = await supabase
     .from("documents")
     .select("id")
     .eq("id", documentId)
-    .eq("organization_id", organizationId)
     .single();
 
   if (docError || !document) {
-    throw new Error(`Document with ID ${documentId} not found or not accessible`);
+    throw new Error(`Document with ID ${documentId} not found`);
   }
 
   // Remove association
@@ -613,19 +555,17 @@ export async function removeDocumentPersonAssociation(
  */
 export async function removeDocumentGroupAssociation(
   documentId: string,
-  groupId: string,
-  organizationId: string
+  groupId: string
 ) {
-  // Verify document exists and belongs to organization
+  // Verify document exists
   const { data: document, error: docError } = await supabase
     .from("documents")
     .select("id")
     .eq("id", documentId)
-    .eq("organization_id", organizationId)
     .single();
 
   if (docError || !document) {
-    throw new Error(`Document with ID ${documentId} not found or not accessible`);
+    throw new Error(`Document with ID ${documentId} not found`);
   }
 
   // Remove association
@@ -643,30 +583,25 @@ export async function removeDocumentGroupAssociation(
 }
 
 /**
- * Fetch documents with filtering and pagination
+ * Search for documents across the entire database
  */
-export async function fetchDocuments(params: {
+export async function searchDocuments(params: {
+  searchQuery: string;
   limit?: number;
-  cursor?: string;
-  title?: string;
+  startingAfter?: string;
   type?: string;
   visibility?: string;
-  propertyId?: string;
-  personId?: string;
-  groupId?: string;
 }) {
-  // Start building the query
   let query = supabase
     .from("documents")
-    .select("*, document_property_associations(property_id), document_person_associations(person_id), document_group_associations(group_id)", {
-      count: "exact",
-    });
+    .select("*", { count: "exact" });
 
-  // Apply filters
-  if (params.title) {
-    query = query.ilike("title", `%${params.title}%`);
+  // Apply search filter - using ilike for case-insensitive search
+  if (params.searchQuery) {
+    query = query.or(`title.ilike.%${params.searchQuery}%, data.ilike.%${params.searchQuery}%`);
   }
 
+  // Apply additional filters
   if (params.type) {
     query = query.eq("type", params.type);
   }
@@ -675,115 +610,190 @@ export async function fetchDocuments(params: {
     query = query.eq("visibility", params.visibility);
   }
 
-  // Cursor-based pagination
-  if (params.cursor) {
-    // If we have a cursor, get items created before that timestamp
-    query = query.lt("created_at", params.cursor);
-  }
+  // Apply pagination
+  const limit = Math.min(params.limit || 10, 100);
+  query = query.limit(limit);
 
-  // Set limit (+1 to check if there's more)
-  const limit = params.limit || 10;
-  query = query.limit(limit + 1);
+  if (params.startingAfter) {
+    const startDoc = await supabase
+      .from("documents")
+      .select("created_at")
+      .eq("id", params.startingAfter)
+      .single();
 
-  // Property associations filter
-  if (params.propertyId) {
-    const propertyDocs = await supabase
-      .from("document_property_associations")
-      .select("document_id")
-      .eq("property_id", params.propertyId);
-
-    if (propertyDocs.data) {
-      const docIds = propertyDocs.data.map((d: { document_id: string }) => d.document_id);
-      if (docIds.length > 0) {
-        query = query.in("id", docIds);
-      } else {
-        // If no documents match the property, return empty result
-        return {
-          data: [],
-          has_more: false,
-          total_count: 0,
-          next_cursor: null,
-        };
-      }
+    if (startDoc.data) {
+      query = query.lt("created_at", startDoc.data.created_at);
     }
   }
 
-  // Person associations filter
-  if (params.personId) {
-    const personDocs = await supabase
-      .from("document_person_associations")
-      .select("document_id")
-      .eq("person_id", params.personId);
-
-    if (personDocs.data) {
-      const docIds = personDocs.data.map((d: { document_id: string }) => d.document_id);
-      if (docIds.length > 0) {
-        query = query.in("id", docIds);
-      } else {
-        // If no documents match the person, return empty result
-        return {
-          data: [],
-          has_more: false,
-          total_count: 0,
-          next_cursor: null,
-        };
-      }
-    }
-  }
-
-  if (params.groupId) {
-    const groupDocs = await supabase
-      .from("document_group_associations")
-      .select("document_id")
-      .eq("group_id", params.groupId);
-
-    if (groupDocs.data) {
-      const docIds = groupDocs.data.map((d: { document_id: string }) => d.document_id);
-      if (docIds.length > 0) {
-        query = query.in("id", docIds);
-      } else {
-        // If no documents match the group, return empty result
-        return {
-          data: [],
-          has_more: false,
-          total_count: 0,
-          next_cursor: null,
-        };
-      }
-    }
-  }
+  // Order by created_at for consistent pagination
+  query = query.order("created_at", { ascending: false });
 
   // Execute query and format response
-  const { data, error } = await query.order("created_at", {
-    ascending: false,
-  });
+  const { data, count, error } = await query;
 
   if (error) {
     throw error;
   }
 
-  if (!data || data.length === 0) {
-    return {
-      data: [],
-      has_more: false,
-      total_count: 0,
-      next_cursor: null,
-    };
-  }
-
-  // Check if we have more results than the requested limit
-  const hasMore = data.length > limit;
-
-  // Return only the requested amount
-  const results = hasMore ? data.slice(0, limit) : data;
-
-  // Get the cursor for the next page (timestamp of the last item)
-  const nextCursor = hasMore ? results[results.length - 1].created_at : null;
-
   return {
-    data: results,
-    has_more: hasMore,
-    total_count: hasMore ? undefined : results.length, // We don't know the total if there are more pages
-    next_cursor: nextCursor,
+    data,
+    has_more: (count || 0) > (data?.length || 0),
+    total_count: count || 0,
   };
+}
+
+/**
+ * Fetch documents with filtering
+ */
+export async function fetchDocuments(params: {
+  title?: string;
+  type?: string;
+  visibility?: string;
+  property_id?: string;
+  person_id?: string;
+  group_id?: string;
+}): Promise<{
+  object: string;
+  data: any[];
+  has_more: boolean;
+  url: string;
+}> {
+  try {
+    // Initialize Supabase query
+    let query = supabase
+      .from("documents")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    // Apply filters
+    if (params.title) {
+      query = query.ilike("title", `%${params.title}%`);
+    }
+
+    if (params.type) {
+      query = query.eq("type", params.type);
+    }
+
+    if (params.visibility) {
+      query = query.eq("visibility", params.visibility);
+    }
+
+    // Handle property association filter
+    if (params.property_id) {
+      const { data: documentIds } = await supabase
+        .from("document_property_associations")
+        .select("document_id")
+        .eq("property_id", params.property_id);
+
+      if (documentIds && documentIds.length > 0) {
+        const ids = documentIds.map(item => item.document_id);
+        query = query.in("id", ids);
+      } else {
+        return {
+          object: "list",
+          data: [],
+          has_more: false,
+          url: "/api/v1/documents"
+        };
+      }
+    }
+
+    // Handle person association filter
+    if (params.person_id) {
+      const { data: documentIds } = await supabase
+        .from("document_person_associations")
+        .select("document_id")
+        .eq("person_id", params.person_id);
+
+      if (documentIds && documentIds.length > 0) {
+        const ids = documentIds.map(item => item.document_id);
+        query = query.in("id", ids);
+      } else {
+        return {
+          object: "list",
+          data: [],
+          has_more: false,
+          url: "/api/v1/documents"
+        };
+      }
+    }
+
+    // Handle group association filter
+    if (params.group_id) {
+      const { data: documentIds } = await supabase
+        .from("document_group_associations")
+        .select("document_id")
+        .eq("group_id", params.group_id);
+
+      if (documentIds && documentIds.length > 0) {
+        const ids = documentIds.map(item => item.document_id);
+        query = query.in("id", ids);
+      } else {
+        return {
+          object: "list",
+          data: [],
+          has_more: false,
+          url: "/api/v1/documents"
+        };
+      }
+    }
+
+    // Execute the query to get all documents
+    const { data: documents, error } = await query;
+
+    if (error) {
+      console.error("Error fetching documents:", error);
+      throw new Error(`Failed to fetch documents: ${error.message}`);
+    }
+
+    console.log(`Found ${documents?.length || 0} documents`);
+
+    // Include document associations
+    if (documents) {
+      for (const doc of documents) {
+        try {
+          // Get property associations
+          const { data: propertyAssocs } = await supabase
+            .from("document_property_associations")
+            .select("property_id")
+            .eq("document_id", doc.id);
+          
+          doc.document_property_associations = propertyAssocs || [];
+          
+          // Get person associations
+          const { data: personAssocs } = await supabase
+            .from("document_person_associations")
+            .select("person_id")
+            .eq("document_id", doc.id);
+          
+          doc.document_person_associations = personAssocs || [];
+          
+          // Get group associations
+          const { data: groupAssocs } = await supabase
+            .from("document_group_associations")
+            .select("group_id")
+            .eq("document_id", doc.id);
+          
+          doc.document_group_associations = groupAssocs || [];
+        } catch (assocError) {
+          console.error(`Error fetching associations for document ${doc.id}:`, assocError);
+          // Continue with the document, even if associations failed
+          doc.document_property_associations = [];
+          doc.document_person_associations = [];
+          doc.document_group_associations = [];
+        }
+      }
+    }
+
+    return {
+      object: "list",
+      data: documents || [],
+      has_more: false,
+      url: "/api/v1/documents"
+    };
+  } catch (error: any) {
+    console.error("Error fetching documents:", error);
+    throw new Error(`Failed to fetch documents: ${error.message}`);
+  }
 }

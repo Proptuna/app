@@ -11,11 +11,8 @@ export async function GET(
 ) {
   const id = params.id;
 
-  // In a real implementation, get organizationId from auth context
-  const organizationId = "123e4567-e89b-12d3-a456-426614174000";
-
   try {
-    const document = await getDocumentById(id, organizationId);
+    const document = await getDocumentById(id);
     return NextResponse.json(document);
   } catch (error: any) {
     console.error(`Error fetching document ${id}:`, error);
@@ -52,10 +49,7 @@ export async function PUT(
       );
     }
     
-    // In a real implementation, get organizationId from auth context
-    const organizationId = "123e4567-e89b-12d3-a456-426614174000";
-    
-    const updatedDocument = await updateDocument(id, body, organizationId);
+    const updatedDocument = await updateDocument(id, body);
     return NextResponse.json(updatedDocument);
   } catch (error: any) {
     console.error(`Error updating document ${id}:`, error);
@@ -81,11 +75,8 @@ export async function DELETE(
 ) {
   const id = params.id;
   
-  // In a real implementation, get organizationId from auth context
-  const organizationId = "123e4567-e89b-12d3-a456-426614174000";
-  
   try {
-    const result = await deleteDocument(id, organizationId);
+    const result = await deleteDocument(id);
     return NextResponse.json(result);
   } catch (error: any) {
     console.error(`Error deleting document ${id}:`, error);

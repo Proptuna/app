@@ -13,30 +13,29 @@ import {
 import {
   PlusIcon,
   SearchIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   RefreshCwIcon,
 } from "lucide-react";
 import { DocumentsAgGrid } from "(components)/documents-ag-grid";
-import { fetchDocuments, Document } from "@/lib/documents-client";
+import { 
+  fetchDocuments, 
+  searchDocuments, 
+  Document
+} from "@/lib/documents-client";
+import { useRouter } from "next/navigation";
 
 export default function DocumentsPage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [documentType, setDocumentType] = useState("all");
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [prevCursors, setPrevCursors] = useState<string[]>([]);
-  const [hasMore, setHasMore] = useState(false);
-  const [limit] = useState(20);
+  const [isSearchMode, setIsSearchMode] = useState(false);
 
   // Debounced search
   const debouncedSearch = useCallback(
     debounce((query: string) => {
-      // Reset pagination when search changes
-      setCursor(null);
-      setPrevCursors([]);
+      setIsSearchMode(!!query);
       loadDocuments();
     }, 300),
     [documentType] // Needed to update when filters change
@@ -47,207 +46,170 @@ export default function DocumentsPage() {
     debouncedSearch(searchQuery);
   }, [searchQuery, debouncedSearch]);
 
+  // Handle document type filter change
+  useEffect(() => {
+    loadDocuments();
+  }, [documentType]);
+
   // Fetch documents from API
-  const loadDocuments = async (loadMore = false) => {
+  const loadDocuments = async () => {
     setIsLoading(true);
+    setError(null);
+
     try {
-      const params: any = { 
-        limit,
-        title: searchQuery || undefined,
-      };
-      
-      // Add cursor for pagination if loading more
-      if (loadMore && cursor) {
-        params.cursor = cursor;
-      } else if (!loadMore) {
-        // Reset cursor when not loading more (fresh search/filter)
-        setCursor(null);
-        setPrevCursors([]);
-      }
-      
-      if (documentType !== "all") {
-        params.type = documentType;
-      }
-      
-      const response = await fetchDocuments(params);
-      
-      if (loadMore) {
-        setDocuments(prevDocs => [...prevDocs, ...response.data]);
+      // If we have a search query, use the search endpoint, otherwise use the regular fetch endpoint
+      if (searchQuery) {
+        await loadSearchResults();
       } else {
-        setDocuments(response.data);
+        await loadAllDocuments();
       }
-      
-      setHasMore(response.has_more);
-      
-      if (response.next_cursor) {
-        // Save current cursor to history before setting new one
-        if (cursor) {
-          setPrevCursors(prev => [...prev, cursor]);
-        }
-        setCursor(response.next_cursor);
-      }
-      
-      setError(null);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error fetching documents:", err);
-      setError(err.message || "Failed to load documents");
-      setDocuments([]);
+      setError("Failed to load documents. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Load documents using regular fetch endpoint
+  const loadAllDocuments = async () => {
+    const params: any = {};
+
+    // Add document type filter if not "all"
+    if (documentType !== "all") {
+      params.type = documentType;
+    }
+
+    const response = await fetchDocuments(params);
+    setDocuments(response.data);
+  };
+
+  // Load documents using search endpoint
+  const loadSearchResults = async () => {
+    const params: any = {
+      query: searchQuery,
+    };
+
+    // Add document type filter if not "all"
+    if (documentType !== "all") {
+      params.type = documentType;
+    }
+
+    const response = await searchDocuments(params);
+    setDocuments(response.data);
+  };
+
+  // Handle document deletion
+  const handleDocumentDeleted = (id: string) => {
+    // Remove the deleted document from the list
+    setDocuments(prevDocuments => prevDocuments.filter(doc => doc.id !== id));
+    
+    // Show a temporary success message
+    const tempError = setError;
+    setError("Document deleted successfully.");
+    setTimeout(() => {
+      if (error === "Document deleted successfully.") {
+        setError(null);
+      }
+    }, 3000);
+  };
+
   // Initial load
   useEffect(() => {
     loadDocuments();
-  }, [documentType]);
-
-  const handleLoadMore = () => {
-    loadDocuments(true);
-  };
-
-  const handlePrevious = () => {
-    if (prevCursors.length > 0) {
-      // Get the previous cursor
-      const prevCursor = prevCursors[prevCursors.length - 1];
-      
-      // Remove it from history
-      setPrevCursors(prev => prev.slice(0, prev.length - 1));
-      
-      // Set it as current cursor
-      setCursor(prevCursor);
-      
-      // Load with that cursor
-      loadDocuments(true);
-    } else {
-      // If no previous cursors, load from the beginning
-      setCursor(null);
-      loadDocuments();
-    }
-  };
-
-  const handleRefresh = () => {
-    setCursor(null);
-    setPrevCursors([]);
-    loadDocuments();
-  };
-
-  const handleAddDocument = () => {
-    // In a real app, this would open a modal to add a new document
-    console.log("Add document clicked");
-  };
+  }, []);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1
-          className="text-2xl font-bold text-gray-900 dark:text-white"
-        >
-          Documents
-        </h1>
-        <Button
-          className="bg-indigo-600 hover:bg-indigo-700 text-white"
-          onClick={handleAddDocument}
-        >
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add Document
-        </Button>
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="w-full sm:w-48">
-          <Select
-            value={documentType}
-            onValueChange={setDocumentType}
+    <div className="container mx-auto py-8">
+      <div className="flex flex-col gap-8">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Documents</h1>
+          <Button 
+            onClick={() => router.push("/documents/create")}
+            className="flex items-center"
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Document type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">
-                All types
-              </SelectItem>
-              <SelectItem value="markdown">
-                Markdown
-              </SelectItem>
-              <SelectItem value="file">
-                File
-              </SelectItem>
-              <SelectItem value="escalation-policy">
-                Escalation Policy
-              </SelectItem>
-            </SelectContent>
-          </Select>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            New Document
+          </Button>
         </div>
-        <div className="relative flex-1">
-          <SearchIcon
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500"
+
+        <div className="flex flex-col gap-4 md:flex-row md:items-end">
+          <div className="flex-1">
+            <div className="relative">
+              <SearchIcon className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search documents..."
+                className="pl-9"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="w-full md:w-48">
+            <Select
+              value={documentType}
+              onValueChange={setDocumentType}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="markdown">Markdown</SelectItem>
+                <SelectItem value="file">File</SelectItem>
+                <SelectItem value="escalation-policy">Escalation Policy</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => loadDocuments()}
+            disabled={isLoading}
+            className="h-10 w-10"
+          >
+            <RefreshCwIcon className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
+
+        {error && (
+          <div className={`p-4 rounded-md ${error === "Document deleted successfully." ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"}`}>
+            {error}
+          </div>
+        )}
+
+        <div className="bg-white dark:bg-gray-800 rounded-md shadow-sm border h-[600px] w-full">
+          <DocumentsAgGrid 
+            documents={documents} 
+            onDocumentDeleted={handleDocumentDeleted}
           />
-          <Input
-            type="search"
-            placeholder="Search documents..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-500">
+            {documents.length > 0 
+              ? `Showing ${documents.length} documents${searchQuery ? ` matching "${searchQuery}"` : ""}` 
+              : isLoading 
+                ? "Loading documents..." 
+                : "No documents found"}
+          </div>
         </div>
       </div>
-
-      {isLoading && documents.length === 0 ? (
-        <div className="flex justify-center p-12">Loading documents...</div>
-      ) : error ? (
-        <div className="p-4 text-red-500 bg-red-50 rounded-md">{error}</div>
-      ) : (
-        <>
-          <DocumentsAgGrid documents={documents} />
-          
-          <div className="flex justify-between mt-6">
-            <Button 
-              variant="outline" 
-              onClick={handlePrevious}
-              disabled={prevCursors.length === 0}
-            >
-              <ChevronLeftIcon className="h-4 w-4 mr-2" />
-              Previous
-            </Button>
-            
-            <Button
-              variant="outline"
-              onClick={handleRefresh}
-            >
-              <RefreshCwIcon className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              onClick={handleLoadMore}
-              disabled={!hasMore || isLoading}
-            >
-              {isLoading ? "Loading..." : "Load More"}
-              {!isLoading && <ChevronRightIcon className="h-4 w-4 ml-2" />}
-            </Button>
-          </div>
-        </>
-      )}
     </div>
   );
 }
 
 // Debounce helper function
-function debounce<T extends (...args: any[]) => any>(
-  fn: T,
-  delay: number
-): (...args: Parameters<T>) => void {
-  let timeoutId: NodeJS.Timeout | null = null;
-  
-  return function(this: any, ...args: Parameters<T>) {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
+function debounce<F extends (...args: any[]) => any>(func: F, wait: number) {
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+
+  return function (this: ThisParameterType<F>, ...args: Parameters<F>) {
+    const context = this;
+    if (timeout !== null) {
+      clearTimeout(timeout);
     }
-    
-    timeoutId = setTimeout(() => {
-      fn.apply(this, args);
-    }, delay);
+    timeout = setTimeout(() => {
+      func.apply(context, args);
+    }, wait);
   };
 }

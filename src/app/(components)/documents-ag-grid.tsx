@@ -25,6 +25,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import { deleteDocument } from "@/lib/documents-client";
 
 // Import AG Grid styles
 import "ag-grid-community/styles/ag-grid.css";
@@ -49,6 +51,7 @@ export interface Document {
 
 interface DocumentsAgGridProps {
   documents: Document[];
+  onDocumentDeleted?: (id: string) => void;
 }
 
 // Document type icon component
@@ -210,20 +213,47 @@ const formatDate = (params: ICellRendererParams) => {
 
 // Actions Cell Renderer
 const ActionsRenderer = (params: ICellRendererParams) => {
+  const router = useRouter();
+  
   const handleView = () => {
-    console.log("View document:", params.data.id);
+    router.push(`/documents/${params.data.id}`);
   };
   
   const handleDownload = () => {
-    console.log("Download document:", params.data.id);
+    // For markdown documents, we can create a blob and download it
+    if (params.data.type === "markdown") {
+      const blob = new Blob([params.data.data], { type: "text/markdown" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${params.data.title}.md`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } else {
+      // For other document types, this would depend on implementation
+      console.log("Download document:", params.data.id);
+    }
   };
   
   const handleEdit = () => {
-    console.log("Edit document:", params.data.id);
+    router.push(`/documents/${params.data.id}/edit`);
   };
   
-  const handleDelete = () => {
-    console.log("Delete document:", params.data.id);
+  const handleDelete = async () => {
+    if (window.confirm(`Are you sure you want to delete "${params.data.title}"?`)) {
+      try {
+        await deleteDocument(params.data.id);
+        // Refresh the grid or notify parent component about the deletion
+        if (params.context.onDocumentDeleted) {
+          params.context.onDocumentDeleted(params.data.id);
+        }
+      } catch (error) {
+        console.error("Error deleting document:", error);
+        alert("Failed to delete document. Please try again.");
+      }
+    }
   };
   
   return (
@@ -255,7 +285,7 @@ const ActionsRenderer = (params: ICellRendererParams) => {
   );
 };
 
-export function DocumentsAgGrid({ documents }: DocumentsAgGridProps) {
+export function DocumentsAgGrid({ documents, onDocumentDeleted }: DocumentsAgGridProps) {
   const [gridApi, setGridApi] = useState<any>(null);
   
   const onGridReady = useCallback((params: GridReadyEvent) => {
@@ -337,6 +367,11 @@ export function DocumentsAgGrid({ documents }: DocumentsAgGridProps) {
     );
   }, []);
   
+  // Context for the grid
+  const context = useMemo(() => ({
+    onDocumentDeleted
+  }), [onDocumentDeleted]);
+
   return (
     <div className="ag-theme-alpine dark:ag-theme-alpine-dark h-[600px] w-full">
       <AgGridReact
@@ -348,6 +383,7 @@ export function DocumentsAgGrid({ documents }: DocumentsAgGridProps) {
         pagination={false}
         domLayout="autoHeight"
         noRowsOverlayComponent={noRowsOverlayComponent}
+        context={context}
       />
     </div>
   );

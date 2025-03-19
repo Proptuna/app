@@ -5,7 +5,7 @@ import supabase from './supabase';
  */
 
 // Type definitions based on your schema
-export interface Account {
+export interface Organization {
   id: string;
   name: string;
   settings?: Record<string, any>;
@@ -15,7 +15,7 @@ export interface Account {
 
 export interface Person {
   id: string;
-  account_id: string;
+  organization_id: string;
   name: string;
   created_at?: string;
   updated_at?: string;
@@ -23,7 +23,7 @@ export interface Person {
 
 export interface Contact {
   id: string;
-  account_id: string;
+  organization_id: string;
   person_id: string;
   contact_type: 'email' | 'phone' | 'whatsapp' | 'telegram' | 'other';
   contact_value: string;
@@ -35,7 +35,7 @@ export interface Contact {
 
 export interface Property {
   id: string;
-  account_id: string;
+  organization_id: string;
   address: string;
   type: 'single' | 'multi_family' | 'condo' | 'townhome' | 'commercial';
   created_at?: string;
@@ -44,7 +44,7 @@ export interface Property {
 
 export interface Job {
   id: string;
-  account_id: string;
+  organization_id: string;
   overview: string;
   state: 'conversation_ongoing' | 'convo_ended' | 'task_created' | 'escalation_needed' | 'escalation_resolved';
   is_active: boolean;
@@ -57,40 +57,40 @@ export interface Job {
   updated_at?: string;
 }
 
-// Account functions
-export async function getAccounts() {
-  const { data, error } = await supabase.from('accounts').select('*');
+// Organization functions
+export async function getOrganizations() {
+  const { data, error } = await supabase.from('organizations').select('*');
   if (error) throw error;
-  return data as Account[];
+  return data as Organization[];
 }
 
-export async function getAccountById(id: string) {
+export async function getOrganizationById(id: string) {
   const { data, error } = await supabase
-    .from('accounts')
+    .from('organizations')
     .select('*')
     .eq('id', id)
     .single();
   
   if (error) throw error;
-  return data as Account;
+  return data as Organization;
 }
 
-export async function createAccount(account: Partial<Account>) {
+export async function createOrganization(organization: Partial<Organization>) {
   const { data, error } = await supabase
-    .from('accounts')
-    .insert(account)
+    .from('organizations')
+    .insert(organization)
     .select();
   
   if (error) throw error;
-  return data[0] as Account;
+  return data[0] as Organization;
 }
 
 // Person functions
-export async function getPeople(accountId: string) {
+export async function getPeople(organizationId: string) {
   const { data, error } = await supabase
     .from('people')
     .select('*')
-    .eq('account_id', accountId);
+    .eq('organization_id', organizationId);
   
   if (error) throw error;
   return data as Person[];
@@ -118,11 +118,11 @@ export async function createPerson(person: Partial<Person>) {
 }
 
 // Property functions
-export async function getProperties(accountId: string) {
+export async function getProperties(organizationId: string) {
   const { data, error } = await supabase
     .from('properties')
     .select('*')
-    .eq('account_id', accountId);
+    .eq('organization_id', organizationId);
   
   if (error) throw error;
   return data as Property[];
@@ -150,11 +150,11 @@ export async function createProperty(property: Partial<Property>) {
 }
 
 // Job functions
-export async function getJobs(accountId: string) {
+export async function getJobs(organizationId: string) {
   const { data, error } = await supabase
     .from('jobs')
     .select('*')
-    .eq('account_id', accountId);
+    .eq('organization_id', organizationId);
   
   if (error) throw error;
   return data as Job[];

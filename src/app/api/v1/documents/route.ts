@@ -6,30 +6,10 @@ import { fetchDocuments, createDocument } from "@/lib/documents";
  * List all documents with pagination and filtering
  */
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const limit = parseInt(searchParams.get("limit") || "10", 10);
-  const cursor = searchParams.get("cursor") || undefined;
-  const title = searchParams.get("title") || undefined;
-  const type = searchParams.get("type") || undefined;
-  const visibility = searchParams.get("visibility") || undefined;
-  const propertyId = searchParams.get("property_id") || undefined;
-  const personId = searchParams.get("person_id") || undefined;
-  const groupId = searchParams.get("group_id") || undefined;
-
-  // In a real implementation, get organizationId from auth context
-  // For now we don't need organizationId as fetchDocuments doesn't require it
-
+  const { searchParams } = new URL(request.url);
+  
   try {
-    const result = await fetchDocuments({
-      limit,
-      cursor,
-      title,
-      type,
-      visibility,
-      propertyId,
-      personId,
-      groupId,
-    });
+    const result = await fetchDocuments({});
 
     return NextResponse.json(result);
   } catch (error: any) {
@@ -68,12 +48,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // In a real implementation, get organizationId from auth context
-    const organizationId = "123e4567-e89b-12d3-a456-426614174000";
-
     const document = await createDocument({
-      ...body,
-      organization_id: organizationId,
+      ...body
     });
 
     return NextResponse.json(document, { status: 201 });
