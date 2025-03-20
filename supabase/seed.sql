@@ -15,8 +15,8 @@ BEGIN
 -- Only seed if no data exists
 IF (SELECT COUNT(*) FROM documents) = 0 THEN
 
-  -- 2. Create groups
-  INSERT INTO groups (name, overview)
+  -- 2. Create tags
+  INSERT INTO tags (name, overview)
   VALUES 
     ('All Properties', 'All properties managed by Sunset Properties'),
     ('Luxury Homes', 'High-end luxury properties'),
@@ -85,17 +85,17 @@ IF (SELECT COUNT(*) FROM documents) = 0 THEN
      E'# Resident Handbook\n\n## Welcome\nThank you for choosing Sunset Properties as your home.\n\n## Important Contacts\n- Office: 555-123-4567\n- Emergency: 555-123-0000\n- Email: support@sunset-properties.com\n\n## Policies\n1. Rent is due on the 1st of each month\n2. Quiet hours are from 10pm to 8am\n3. Maintenance requests should be submitted through the resident portal\n\n## Amenities\nPlease refer to your specific property guide for amenity information.',
      'markdown', 'external');
 
-  -- 7. Create property-group associations
-  -- Get the All Properties group ID
-  SELECT id INTO temp_var FROM groups WHERE name = 'All Properties';
+  -- 7. Create property-tag associations
+  -- Get the All Properties tag ID
+  SELECT id INTO temp_var FROM tags WHERE name = 'All Properties';
   
-  -- Associate all properties with the All Properties group
-  INSERT INTO property_group_associations (property_id, group_id)
+  -- Associate all properties with the All Properties tag
+  INSERT INTO property_tag_associations (property_id, tag_id)
   SELECT id, temp_var FROM properties;
   
-  -- Associate luxury property with Luxury Homes group
-  SELECT id INTO temp_var FROM groups WHERE name = 'Luxury Homes';
-  INSERT INTO property_group_associations (property_id, group_id)
+  -- Associate luxury property with Luxury Homes tag
+  SELECT id INTO temp_var FROM tags WHERE name = 'Luxury Homes';
+  INSERT INTO property_tag_associations (property_id, tag_id)
   SELECT id, temp_var FROM properties WHERE address = '789 Sunset Boulevard, Beverly Hills, CA 90212';
 
   -- 8. Create person-property associations
@@ -117,10 +117,10 @@ IF (SELECT COUNT(*) FROM documents) = 0 THEN
   UNION ALL
   SELECT j.id, p2.id FROM jennifer j CROSS JOIN prop2 p2;
 
-  -- 10. Create document-group associations
+  -- 10. Create document-tag associations
   SELECT id INTO temp_var FROM documents WHERE title = 'Resident Handbook';
-  INSERT INTO document_group_associations (document_id, group_id)
-  SELECT temp_var, id FROM groups WHERE name = 'All Residents';
+  INSERT INTO document_tag_associations (document_id, tag_id)
+  SELECT temp_var, id FROM tags WHERE name = 'All Residents';
 
   -- 10.1 Create additional documents for leases and agreements
   INSERT INTO documents (title, data, type, visibility)

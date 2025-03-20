@@ -5,8 +5,8 @@
 -- Enable UUID extension if not already enabled
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Groups
-CREATE TABLE IF NOT EXISTS groups (
+-- Tags
+CREATE TABLE IF NOT EXISTS tags (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255),
     overview TEXT,
@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     is_active BOOLEAN DEFAULT TRUE,
     person_id UUID REFERENCES people(id),
     property_id UUID REFERENCES properties(id),
-    group_id UUID REFERENCES groups(id),
+    tag_id UUID REFERENCES tags(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -136,15 +136,15 @@ CREATE TABLE IF NOT EXISTS artifacts (
 
 -- EXPLICIT ASSOCIATION TABLES
 
--- Property-Group associations
-CREATE TABLE IF NOT EXISTS property_group_associations (
+-- Property-Tag associations
+CREATE TABLE IF NOT EXISTS property_tag_associations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     property_id UUID NOT NULL REFERENCES properties(id),
-    group_id UUID NOT NULL REFERENCES groups(id),
+    tag_id UUID NOT NULL REFERENCES tags(id),
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(property_id, group_id)
+    UNIQUE(property_id, tag_id)
 );
 
 -- Person-Property associations
@@ -158,15 +158,15 @@ CREATE TABLE IF NOT EXISTS person_property_associations (
     UNIQUE(person_id, property_id)
 );
 
--- Document-Group associations
-CREATE TABLE IF NOT EXISTS document_group_associations (
+-- Document-Tag associations
+CREATE TABLE IF NOT EXISTS document_tag_associations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     document_id UUID NOT NULL REFERENCES documents(id),
-    group_id UUID NOT NULL REFERENCES groups(id),
+    tag_id UUID NOT NULL REFERENCES tags(id),
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(document_id, group_id)
+    UNIQUE(document_id, tag_id)
 );
 
 -- Document-Property associations

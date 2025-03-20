@@ -155,11 +155,14 @@ export default function PeoplePage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          People
-        </h1>
+    <div className="container mx-auto py-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">People</h1>
+          <p className="text-muted-foreground">
+            Manage your tenants, owners, and property managers
+          </p>
+        </div>
         <Button
           className="bg-indigo-600 hover:bg-indigo-700 text-white"
           onClick={handleAddPerson}
@@ -171,7 +174,7 @@ export default function PeoplePage() {
 
       {/* Success Message */}
       {successMessage && (
-        <Alert className="bg-green-50 text-green-800 border-green-200">
+        <Alert className="bg-green-50 text-green-800 border-green-200 mb-4">
           <CheckCircle className="h-4 w-4 text-green-600" />
           <AlertTitle>Success</AlertTitle>
           <AlertDescription>{successMessage}</AlertDescription>
@@ -180,26 +183,28 @@ export default function PeoplePage() {
 
       {/* Error Message */}
       {error && (
-        <Alert className="bg-red-50 text-red-800 border-red-200">
+        <Alert className="bg-red-50 text-red-800 border-red-200 mb-4">
           <AlertCircle className="h-4 w-4 text-red-600" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      {/* Loading State */}
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        </div>
-      ) : (
-        <PeopleAgGrid
-          people={people}
-          onPersonDeleted={handlePersonDeleted}
-          onPersonEdit={handlePersonEdit}
-          onPersonView={handlePersonView}
-        />
-      )}
+      {/* Main Content */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          </div>
+        ) : (
+          <PeopleAgGrid
+            people={people}
+            onPersonDeleted={handlePersonDeleted}
+            onPersonEdit={handlePersonEdit}
+            onPersonView={handlePersonView}
+          />
+        )}
+      </div>
 
       {/* Add Person Modal */}
       {showAddPersonModal && (

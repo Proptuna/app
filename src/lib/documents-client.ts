@@ -15,7 +15,7 @@ export interface Document {
   associations?: {
     properties: Array<{ id: string; address: string }>;
     people: Array<{ id: string; name: string; type: string }>;
-    groups: Array<{ id: string; name: string }>;
+    tags: Array<{ id: string; name: string }>;
   };
 }
 
@@ -25,7 +25,7 @@ export interface DocumentListParams {
   visibility?: string;
   propertyId?: string;
   personId?: string;
-  groupId?: string;
+  tagId?: string;
 }
 
 export interface DocumentListResponse {
@@ -45,7 +45,7 @@ export async function fetchDocuments(params: DocumentListParams = {}): Promise<D
   if (params.visibility) queryParams.append("visibility", params.visibility);
   if (params.propertyId) queryParams.append("property_id", params.propertyId);
   if (params.personId) queryParams.append("person_id", params.personId);
-  if (params.groupId) queryParams.append("group_id", params.groupId);
+  if (params.tagId) queryParams.append("tag_id", params.tagId);
   
   const url = `/api/v1/documents${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
   
@@ -99,7 +99,7 @@ export async function createDocument(document: {
   associations?: {
     property_ids?: string[];
     person_ids?: string[];
-    group_ids?: string[];
+    tag_ids?: string[];
   };
 }): Promise<Document> {
   const response = await fetch("/api/v1/documents", {
@@ -212,24 +212,24 @@ export async function associateDocumentWithPerson(
 }
 
 /**
- * Associate a document with a group
+ * Associate a document with a tag
  */
-export async function associateDocumentWithGroup(
+export async function associateDocumentWithTag(
   documentId: string,
-  groupId: string,
+  tagId: string,
   metadata: Record<string, any> = {}
 ): Promise<any> {
-  const response = await fetch(`/api/v1/documents/${documentId}/groups`, {
+  const response = await fetch(`/api/v1/documents/${documentId}/tags`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ group_id: groupId, metadata }),
+    body: JSON.stringify({ tag_id: tagId, metadata }),
   });
   
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "Failed to associate document with group");
+    throw new Error(error.error || "Failed to associate document with tag");
   }
   
   return response.json();
@@ -274,19 +274,19 @@ export async function removeDocumentPersonAssociation(
 }
 
 /**
- * Remove a document's association with a group
+ * Remove a document's association with a tag
  */
-export async function removeDocumentGroupAssociation(
+export async function removeDocumentTagAssociation(
   documentId: string,
-  groupId: string
+  tagId: string
 ): Promise<{ success: boolean }> {
-  const response = await fetch(`/api/v1/documents/${documentId}/groups/${groupId}`, {
+  const response = await fetch(`/api/v1/documents/${documentId}/tags/${tagId}`, {
     method: "DELETE",
   });
   
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "Failed to remove group association");
+    throw new Error(error.error || "Failed to remove tag association");
   }
   
   return response.json();

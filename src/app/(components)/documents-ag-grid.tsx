@@ -633,7 +633,7 @@ export default function DocumentsAgGrid({
   }), [onDocumentDeleted, onDocumentView]);
 
   return (
-    <div className="ag-theme-alpine dark:ag-theme-alpine-dark w-full rounded-md overflow-hidden">
+    <div className="ag-theme-alpine dark:ag-theme-alpine-dark w-full rounded-md overflow-hidden shadow-sm">
       <div className="p-4 border-b flex items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />

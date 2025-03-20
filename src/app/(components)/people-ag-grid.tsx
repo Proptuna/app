@@ -168,6 +168,35 @@ const ActionsCellRenderer = (props: ICellRendererParams) => {
   );
 };
 
+// Name cell renderer with icon
+const NameCellRenderer = (props: ICellRendererParams) => {
+  return (
+    <div className="flex items-center">
+      <UserIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400 mr-2" />
+      <span>{props.value}</span>
+    </div>
+  );
+};
+
+// No rows overlay component
+const NoRowsOverlayComponent = () => (
+  <div className="flex flex-col items-center justify-center h-full p-12">
+    <UserIcon className="h-16 w-16 text-gray-300 mb-4" />
+    <h3 className="text-xl font-medium text-gray-500">No people found</h3>
+    <div className="text-gray-400 text-center mt-2">
+      Try adjusting your search or filter criteria
+    </div>
+  </div>
+);
+
+// Loading overlay component
+const LoadingOverlayComponent = () => (
+  <div className="flex flex-col items-center justify-center h-full p-12">
+    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+    <div className="text-gray-500 mt-4">Loading people...</div>
+  </div>
+);
+
 export default function PeopleAgGrid({
   people,
   onPersonDeleted,
@@ -179,11 +208,56 @@ export default function PeopleAgGrid({
   const [filterText, setFilterText] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [personToDelete, setPersonToDelete] = useState<string | null>(null);
+  const [filteredPeople, setFilteredPeople] = useState<Person[]>([]);
 
   // Update row data when people prop changes
   useEffect(() => {
     setRowData(people);
+    setFilteredPeople(people);
   }, [people]);
+
+  // Filter people based on quick filter text
+  useEffect(() => {
+    if (!filterText.trim()) {
+      setFilteredPeople(rowData);
+      return;
+    }
+    
+    const searchTerm = filterText.toLowerCase();
+    const filtered = rowData.filter(person => {
+      // Search in name
+      if (person.name.toLowerCase().includes(searchTerm)) return true;
+      
+      // Search in email
+      if (person.email?.toLowerCase().includes(searchTerm)) return true;
+      
+      // Search in phone
+      if (person.phone?.toLowerCase().includes(searchTerm)) return true;
+      
+      // Search in type
+      if (person.type?.toLowerCase().includes(searchTerm)) return true;
+      
+      // Search in role
+      if (person.role?.toLowerCase().includes(searchTerm)) return true;
+      
+      // Search in associations
+      if (person.associations) {
+        // Search in properties
+        if (person.associations.properties?.some(p => 
+          p.address.toLowerCase().includes(searchTerm)
+        )) return true;
+        
+        // Search in groups
+        if (person.associations.groups?.some(g => 
+          g.name.toLowerCase().includes(searchTerm)
+        )) return true;
+      }
+      
+      return false;
+    });
+    
+    setFilteredPeople(filtered);
+  }, [rowData, filterText]);
 
   // Column definitions
   const columnDefs = useMemo<ColDef[]>(
@@ -195,6 +269,7 @@ export default function PeopleAgGrid({
         filter: true,
         flex: 1,
         minWidth: 150,
+        cellRenderer: NameCellRenderer
       },
       {
         headerName: "Contact",
@@ -234,11 +309,7 @@ export default function PeopleAgGrid({
         width: 100,
         sortable: false,
         filter: false,
-        cellRendererParams: {
-          clicked: function (id: string) {
-            console.log(id);
-          },
-        },
+        pinned: "right",
       },
     ],
     []
@@ -248,6 +319,13 @@ export default function PeopleAgGrid({
   const defaultColDef = useMemo(
     () => ({
       resizable: true,
+      suppressMovable: false,
+      sortable: true,
+      filter: true,
+      filterParams: {
+        buttons: ['reset', 'apply'],
+        closeOnApply: true
+      }
     }),
     []
   );
@@ -255,6 +333,21 @@ export default function PeopleAgGrid({
   // Grid ready event handler
   const onGridReady = useCallback((params: GridReadyEvent) => {
     setGridApi(params.api);
+    
+    // Auto-size columns to fit the available width
+    setTimeout(() => {
+      params.api.sizeColumnsToFit();
+    }, 0);
+
+    // Set default sorting by name
+    params.api.applyColumnState({
+      state: [
+        {
+          colId: 'name',
+          sort: 'asc'
+        }
+      ]
+    });
   }, []);
 
   // Handle filter changes
@@ -262,20 +355,29 @@ export default function PeopleAgGrid({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value;
       setFilterText(value);
-      
-      if (gridApi) {
-        gridApi.setGridOption('quickFilterText', value);
-      }
     },
-    [gridApi]
+    []
   );
 
   // Clear filter
   const clearFilter = useCallback(() => {
     setFilterText("");
-    if (gridApi) {
-      gridApi.setGridOption('quickFilterText', '');
-    }
+  }, []);
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (gridApi) {
+        setTimeout(() => {
+          gridApi.sizeColumnsToFit();
+        }, 0);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
   }, [gridApi]);
 
   // Handle delete person
@@ -318,30 +420,84 @@ export default function PeopleAgGrid({
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
+    <div className="ag-theme-alpine dark:ag-theme-alpine-dark w-full rounded-md overflow-hidden">
+      <div className="p-4 border-b flex items-center">
         <div className="relative flex-1">
-          <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
-            placeholder="Filter people..."
+            placeholder="Search people..."
             value={filterText}
             onChange={onFilterTextChange}
-            className="pl-8"
+            className="pl-10"
           />
           {filterText && (
             <button
               onClick={clearFilter}
-              className="absolute right-2 top-1/2 -translate-y-1/2"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
-              <X className="h-4 w-4 text-gray-500" />
+              <X className="h-4 w-4" />
             </button>
           )}
         </div>
       </div>
 
-      <div className="ag-theme-alpine h-[600px] w-full">
+      <div className="h-[550px]">
+        <style jsx global>{`
+          .ag-theme-alpine {
+            --ag-header-height: 50px;
+            --ag-header-foreground-color: #374151;
+            --ag-header-background-color: #f9fafb;
+            --ag-header-cell-hover-background-color: #f3f4f6;
+            --ag-header-cell-moving-background-color: #f3f4f6;
+            --ag-row-hover-color: #f9fafb;
+            --ag-selected-row-background-color: rgba(79, 70, 229, 0.1);
+            --ag-font-size: 14px;
+            --ag-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --ag-grid-size: 6px;
+            --ag-list-item-height: 30px;
+            --ag-cell-horizontal-padding: 12px;
+            --ag-borders: solid 1px;
+            --ag-border-color: #e5e7eb;
+            --ag-secondary-border-color: #e5e7eb;
+            --ag-row-border-color: #f3f4f6;
+            --ag-cell-horizontal-border: solid 1px var(--ag-border-color);
+            --ag-range-selection-border-color: rgba(79, 70, 229, 0.5);
+            --ag-range-selection-background-color: rgba(79, 70, 229, 0.1);
+          }
+          
+          .ag-theme-alpine-dark {
+            --ag-header-foreground-color: #e5e7eb;
+            --ag-header-background-color: #1f2937;
+            --ag-header-cell-hover-background-color: #374151;
+            --ag-header-cell-moving-background-color: #374151;
+            --ag-background-color: #111827;
+            --ag-foreground-color: #e5e7eb;
+            --ag-row-hover-color: #1f2937;
+            --ag-selected-row-background-color: rgba(79, 70, 229, 0.2);
+            --ag-border-color: #374151;
+            --ag-secondary-border-color: #374151;
+            --ag-row-border-color: #1f2937;
+          }
+          
+          .ag-theme-alpine .ag-header,
+          .ag-theme-alpine-dark .ag-header {
+            font-weight: 600;
+          }
+          
+          .ag-theme-alpine .ag-row,
+          .ag-theme-alpine-dark .ag-row {
+            border-bottom-style: solid;
+            border-bottom-width: 1px;
+            border-bottom-color: var(--ag-row-border-color);
+          }
+          
+          .ag-theme-alpine .ag-row-hover,
+          .ag-theme-alpine-dark .ag-row-hover {
+            background-color: var(--ag-row-hover-color);
+          }
+        `}</style>
         <AgGridReact
-          rowData={rowData}
+          rowData={filteredPeople}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
           onGridReady={onGridReady}
@@ -349,6 +505,15 @@ export default function PeopleAgGrid({
           context={context}
           pagination={true}
           paginationPageSize={10}
+          paginationAutoPageSize={false}
+          domLayout="normal"
+          animateRows={true}
+          noRowsOverlayComponent={NoRowsOverlayComponent}
+          loadingOverlayComponent={LoadingOverlayComponent}
+          rowHeight={60}
+          suppressCellFocus={true}
+          enableCellTextSelection={true}
+          suppressRowClickSelection={true}
         />
       </div>
 

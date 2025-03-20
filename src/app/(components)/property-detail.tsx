@@ -18,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 interface Property {
   id: string;
   name: string;
-  group: string;
+  tag: string;
   address: string;
   type: string;
   tenants: string[];
@@ -117,7 +117,7 @@ export function PropertyDetail({ property, onClose }: PropertyDetailProps) {
                     <h3
                       className="text-sm font-medium text-gray-500 dark:text-gray-400"
                     >
-                      Group
+                      Tag
                     </h3>
                     <p
                       className="text-base font-medium mt-1 flex items-center"
@@ -126,7 +126,7 @@ export function PropertyDetail({ property, onClose }: PropertyDetailProps) {
                         className="h-4 w-4 mr-2 text-gray-500 dark:text-gray-400"
                       />
 
-                      {property.group !== "—" ? property.group : "None"}
+                      {property.tag !== "—" ? property.tag : "None"}
                     </p>
                   </div>
 
@@ -228,10 +228,10 @@ export function PropertyDetail({ property, onClose }: PropertyDetailProps) {
                         <h3
                           className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                         >
-                          Group Assignment
+                          Tag Assignment
                         </h3>
                         <p>
-                          {property.group !== "—" ? property.group : "None"}
+                          {property.tag !== "—" ? property.tag : "None"}
                         </p>
                       </div>
 

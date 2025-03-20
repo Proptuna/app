@@ -17,7 +17,7 @@ export interface DocumentAssociation {
   document_id: string;
   property_id?: string;
   person_id?: string;
-  group_id?: string;
+  tag_id?: string;
   metadata: Record<string, any>;
   created_at?: string;
 }
@@ -30,7 +30,7 @@ export async function getDocuments(params: {
   visibility?: string;
   propertyId?: string;
   personId?: string;
-  groupId?: string;
+  tagId?: string;
 }) {
   let query = supabase
     .from("documents")
@@ -45,7 +45,7 @@ export async function getDocuments(params: {
     query = query.eq("visibility", params.visibility);
   }
 
-  // Handle property, person, and group filtering through associations
+  // Handle property, person, and tag filtering through associations
   if (params.propertyId) {
     const propertyDocs = await supabase
       .from("document_property_associations")
@@ -70,14 +70,14 @@ export async function getDocuments(params: {
     }
   }
 
-  if (params.groupId) {
-    const groupDocs = await supabase
-      .from("document_group_associations")
+  if (params.tagId) {
+    const tagDocs = await supabase
+      .from("document_tag_associations")
       .select("document_id")
-      .eq("group_id", params.groupId);
+      .eq("tag_id", params.tagId);
 
-    if (groupDocs.data) {
-      const docIds = groupDocs.data.map((d) => d.document_id);
+    if (tagDocs.data) {
+      const docIds = tagDocs.data.map((d) => d.document_id);
       query = query.in("id", docIds);
     }
   }
@@ -148,7 +148,7 @@ export async function createDocument(document: {
   associations?: {
     property_ids?: string[];
     person_ids?: string[];
-    group_ids?: string[];
+    tag_ids?: string[];
   };
 }) {
   // Insert the document
@@ -249,7 +249,7 @@ export async function deleteDocument(id: string) {
   await Promise.all([
     supabase.from("document_property_associations").delete().eq("document_id", id),
     supabase.from("document_person_associations").delete().eq("document_id", id),
-    supabase.from("document_group_associations").delete().eq("document_id", id),
+    supabase.from("document_tag_associations").delete().eq("document_id", id),
   ]);
 
   // Delete the document
@@ -275,7 +275,7 @@ export async function getDocumentAssociations(documentId: string) {
   console.log(`Server: Getting associations for document ${documentId}`);
   
   try {
-    const [propertyResults, personResults, groupResults] = await Promise.all([
+    const [propertyResults, personResults, tagResults] = await Promise.all([
       supabase
         .from("document_property_associations")
         .select("document_id, property_id, properties(id, address)")
@@ -287,8 +287,8 @@ export async function getDocumentAssociations(documentId: string) {
         .eq("document_id", documentId),
 
       supabase
-        .from("document_group_associations")
-        .select("document_id, group_id, groups(id, name)")
+        .from("document_tag_associations")
+        .select("document_id, tag_id, tags(id, name)")
         .eq("document_id", documentId),
     ]);
 
@@ -301,8 +301,8 @@ export async function getDocumentAssociations(documentId: string) {
       console.error(`Server: Error fetching person associations:`, personResults.error);
     }
     
-    if (groupResults.error) {
-      console.error(`Server: Error fetching group associations:`, groupResults.error);
+    if (tagResults.error) {
+      console.error(`Server: Error fetching tag associations:`, tagResults.error);
     }
 
     // Extract properties
@@ -315,21 +315,21 @@ export async function getDocumentAssociations(documentId: string) {
       ? personResults.data.map((item) => item.people).filter(Boolean)
       : [];
 
-    // Extract groups
-    const groups = groupResults.data && !groupResults.error
-      ? groupResults.data.map((item) => item.groups).filter(Boolean)
+    // Extract tags
+    const tags = tagResults.data && !tagResults.error
+      ? tagResults.data.map((item) => item.tags).filter(Boolean)
       : [];
 
     console.log(`Server: Found associations for document ${documentId}:`, {
       propertiesCount: properties.length,
       peopleCount: people.length,
-      groupsCount: groups.length
+      tagsCount: tags.length
     });
 
     return {
       properties,
       people,
-      groups,
+      tags,
     };
   } catch (error) {
     console.error(`Server: Error in getDocumentAssociations for ${documentId}:`, error);
@@ -337,7 +337,7 @@ export async function getDocumentAssociations(documentId: string) {
     return {
       properties: [],
       people: [],
-      groups: []
+      tags: []
     };
   }
 }
@@ -350,10 +350,10 @@ export async function createDocumentAssociations(
   associations: {
     property_ids?: string[];
     person_ids?: string[];
-    group_ids?: string[];
+    tag_ids?: string[];
   }
 ) {
-  const { property_ids = [], person_ids = [], group_ids = [] } = associations;
+  const { property_ids = [], person_ids = [], tag_ids = [] } = associations;
 
   const propertyAssociations = property_ids.map((property_id) => ({
     document_id: documentId,
@@ -367,9 +367,9 @@ export async function createDocumentAssociations(
     metadata: {},
   }));
 
-  const groupAssociations = group_ids.map((group_id) => ({
+  const tagAssociations = tag_ids.map((tag_id) => ({
     document_id: documentId,
-    group_id,
+    tag_id,
     metadata: {},
   }));
 
@@ -381,8 +381,8 @@ export async function createDocumentAssociations(
     personAssociations.length > 0
       ? supabase.from("document_person_associations").insert(personAssociations)
       : null,
-    groupAssociations.length > 0
-      ? supabase.from("document_group_associations").insert(groupAssociations)
+    tagAssociations.length > 0
+      ? supabase.from("document_tag_associations").insert(tagAssociations)
       : null,
   ]);
 }
@@ -484,11 +484,11 @@ export async function associateDocumentWithPerson(
 }
 
 /**
- * Associate a document with a group
+ * Associate a document with a tag
  */
-export async function associateDocumentWithGroup(
+export async function associateDocumentWithTag(
   documentId: string,
-  groupId: string,
+  tagId: string,
   metadata: Record<string, any> = {}
 ) {
   // Verify document exists
@@ -502,23 +502,23 @@ export async function associateDocumentWithGroup(
     throw new Error(`Document with ID ${documentId} not found`);
   }
 
-  // Verify group exists
-  const { data: group, error: groupError } = await supabase
-    .from("groups")
+  // Verify tag exists
+  const { data: tag, error: tagError } = await supabase
+    .from("tags")
     .select("id")
-    .eq("id", groupId)
+    .eq("id", tagId)
     .single();
 
-  if (groupError || !group) {
-    throw new Error(`Group with ID ${groupId} not found`);
+  if (tagError || !tag) {
+    throw new Error(`Tag with ID ${tagId} not found`);
   }
 
   // Create association
   const { data: association, error } = await supabase
-    .from("document_group_associations")
+    .from("document_tag_associations")
     .insert({
       document_id: documentId,
-      group_id: groupId,
+      tag_id: tagId,
       metadata,
     })
     .select()
@@ -596,11 +596,11 @@ export async function removeDocumentPersonAssociation(
 }
 
 /**
- * Remove a document's association with a group
+ * Remove a document's association with a tag
  */
-export async function removeDocumentGroupAssociation(
+export async function removeDocumentTagAssociation(
   documentId: string,
-  groupId: string
+  tagId: string
 ) {
   // Verify document exists
   const { data: document, error: docError } = await supabase
@@ -615,10 +615,10 @@ export async function removeDocumentGroupAssociation(
 
   // Remove association
   const { error } = await supabase
-    .from("document_group_associations")
+    .from("document_tag_associations")
     .delete()
     .eq("document_id", documentId)
-    .eq("group_id", groupId);
+    .eq("tag_id", tagId);
 
   if (error) {
     throw error;
@@ -697,7 +697,7 @@ export async function fetchDocuments(params: {
   visibility?: string;
   property_id?: string;
   person_id?: string;
-  group_id?: string;
+  tag_id?: string;
 }): Promise<{
   object: string;
   data: any[];
@@ -764,12 +764,12 @@ export async function fetchDocuments(params: {
       }
     }
 
-    // Handle group association filter
-    if (params.group_id) {
+    // Handle tag association filter
+    if (params.tag_id) {
       const { data: documentIds } = await supabase
-        .from("document_group_associations")
+        .from("document_tag_associations")
         .select("document_id")
-        .eq("group_id", params.group_id);
+        .eq("tag_id", params.tag_id);
 
       if (documentIds && documentIds.length > 0) {
         const ids = documentIds.map(item => item.document_id);
@@ -814,19 +814,19 @@ export async function fetchDocuments(params: {
           
           doc.document_person_associations = personAssocs || [];
           
-          // Get group associations
-          const { data: groupAssocs } = await supabase
-            .from("document_group_associations")
-            .select("group_id")
+          // Get tag associations
+          const { data: tagAssocs } = await supabase
+            .from("document_tag_associations")
+            .select("tag_id")
             .eq("document_id", doc.id);
           
-          doc.document_group_associations = groupAssocs || [];
+          doc.document_tag_associations = tagAssocs || [];
         } catch (assocError) {
           console.error(`Error fetching associations for document ${doc.id}:`, assocError);
           // Continue with the document, even if associations failed
           doc.document_property_associations = [];
           doc.document_person_associations = [];
-          doc.document_group_associations = [];
+          doc.document_tag_associations = [];
         }
       }
     }

@@ -347,7 +347,7 @@ export default function DocumentsPage() {
                   </div>
                 </div>
               )}
-              <div className="overflow-hidden border rounded-lg">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
                 <DocumentsAgGrid 
                   documents={documents} 
                   onDocumentDeleted={handleDocumentDeleted}

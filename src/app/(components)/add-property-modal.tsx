@@ -24,13 +24,13 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 interface AddPropertyModalProps {
   onClose: () => void;
   onAdd: (property: any) => void;
-  existingGroups: string[];
+  existingTags: string[];
 }
 
 export function AddPropertyModal({
   onClose,
   onAdd,
-  existingGroups,
+  existingTags,
 }: AddPropertyModalProps) {
   const [propertyType, setPropertyType] = useState<"single" | "multi">(
     "single",
@@ -40,9 +40,9 @@ export function AddPropertyModal({
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [zip, setZip] = useState("");
-  const [group, setGroup] = useState("");
-  const [newGroup, setNewGroup] = useState("");
-  const [showNewGroupInput, setShowNewGroupInput] = useState(false);
+  const [tag, setTag] = useState("");
+  const [newTag, setNewTag] = useState("");
+  const [showNewTagInput, setShowNewTagInput] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,19 +54,19 @@ export function AddPropertyModal({
       state,
       zip,
       type: propertyType,
-      group: showNewGroupInput ? newGroup : group,
+      tag: showNewTagInput ? newTag : tag,
     };
 
     onAdd(property);
   };
 
-  const handleGroupChange = (value: string) => {
+  const handleTagChange = (value: string) => {
     if (value === "add-new") {
-      setShowNewGroupInput(true);
-      setGroup("");
+      setShowNewTagInput(true);
+      setTag("");
     } else {
-      setShowNewGroupInput(false);
-      setGroup(value);
+      setShowNewTagInput(false);
+      setTag(value);
     }
   };
 
@@ -173,46 +173,46 @@ export function AddPropertyModal({
 
             {propertyType === "multi" && (
               <div className="grid gap-2">
-                <Label htmlFor="group">
-                  Property Group
+                <Label htmlFor="tag">
+                  Property Tag
                 </Label>
-                {showNewGroupInput ? (
+                {showNewTagInput ? (
                   <div className="flex gap-2">
                     <Input
-                      value={newGroup}
-                      onChange={(e) => setNewGroup(e.target.value)}
-                      placeholder="New Group Name"
+                      value={newTag}
+                      onChange={(e) => setNewTag(e.target.value)}
+                      placeholder="New Tag Name"
                       required
                     />
 
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setShowNewGroupInput(false)}
+                      onClick={() => setShowNewTagInput(false)}
                     >
                       Cancel
                     </Button>
                   </div>
                 ) : (
                   <Select
-                    value={group}
-                    onValueChange={handleGroupChange}
+                    value={tag}
+                    onValueChange={handleTagChange}
                     required
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a group" />
+                      <SelectValue placeholder="Select a tag" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="add-new">
-                        + Add New Group
+                        + Add New Tag
                       </SelectItem>
-                      {existingGroups.map((group, index) => (
+                      {existingTags.map((tag, index) => (
                         <SelectItem
-                          key={group}
-                          value={group}
+                          key={tag}
+                          value={tag}
                           id={`qpv7r3_${index}`}
                         >
-                          {group}
+                          {tag}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -220,7 +220,7 @@ export function AddPropertyModal({
                 )}
 
                 <p className="text-xs text-muted-foreground">
-                  All multi-family properties must be assigned to a group.
+                  All multi-family properties must be assigned to a tag.
                 </p>
               </div>
             )}
