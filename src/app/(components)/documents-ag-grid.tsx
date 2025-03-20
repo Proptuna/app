@@ -371,7 +371,7 @@ const ActionsRenderer = (params: ICellRendererParams) => {
   );
 };
 
-export function DocumentsAgGrid({ 
+export default function DocumentsAgGrid({ 
   documents, 
   onDocumentDeleted,
   onDocumentView

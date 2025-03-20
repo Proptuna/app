@@ -94,16 +94,8 @@ export default function DocumentViewComponent({ document, onClose, onDelete }: D
   };
 
   return (
-    <div className="flex flex-col">
-      <div className="mb-6 flex items-center justify-between">
-        <Button 
-          variant="outline" 
-          onClick={onClose} 
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Documents
-        </Button>
+    <div className="flex flex-col max-h-[90vh]">
+      <div className="mb-6 flex items-center justify-end">
         {document && (
           <div className="flex items-center gap-2">
             <Button
@@ -119,71 +111,52 @@ export default function DocumentViewComponent({ document, onClose, onDelete }: D
               variant="outline"
               size="sm"
               className="flex items-center gap-2"
-            >
-              <Edit className="h-4 w-4" />
-              Edit
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
               onClick={() => setIsDeleteDialogOpen(true)}
-              className="flex items-center gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
-              disabled={isDeleting}
             >
-              <Trash className="h-4 w-4" />
-              {isDeleting ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Deleting...
-                </span>
-              ) : "Delete"}
+              <Trash className="h-4 w-4 text-red-500" />
+              Delete
             </Button>
           </div>
         )}
       </div>
 
-      {document ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold">{document.title}</h1>
-              <Badge variant="outline">{document.type}</Badge>
-            </div>
-            <div className="text-sm text-gray-500 mb-4">
-              <p>Created: {formatDate(document.created_at)}</p>
-              <p>Last Updated: {formatDate(document.updated_at)}</p>
-            </div>
-            <div className="prose dark:prose-invert max-w-none">
-              {document.type === "markdown" ? (
-                <div className="whitespace-pre-wrap">{document.data}</div>
-              ) : (
-                <div className="flex items-center justify-center p-12 border-2 border-dashed rounded-lg">
-                  <div className="text-center">
-                    <FileText className="h-12 w-12 mx-auto text-gray-400" />
-                    <p className="mt-2 text-sm text-gray-500">
-                      This document type cannot be previewed directly.
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDownload}
-                      className="mt-4"
-                    >
-                      Download to View
-                    </Button>
-                  </div>
+      {/* Document content */}
+      <div className="bg-white rounded-lg border overflow-hidden flex-1">
+        <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 150px)' }}>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold">{document.title}</h1>
+            <Badge variant="outline">{document.type}</Badge>
+          </div>
+          <div className="text-sm text-gray-500 mb-4">
+            <p>Created: {formatDate(document.created_at)}</p>
+            <p>Last Updated: {formatDate(document.updated_at)}</p>
+          </div>
+          <div className="prose dark:prose-invert max-w-none">
+            {document.type === "markdown" ? (
+              <div className="whitespace-pre-wrap">{document.data}</div>
+            ) : (
+              <div className="flex items-center justify-center p-12 border-2 border-dashed rounded-lg">
+                <div className="text-center">
+                  <FileText className="h-12 w-12 mx-auto text-gray-400" />
+                  <p className="mt-2 text-sm text-gray-500">
+                    This document type cannot be previewed directly.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownload}
+                    className="mt-4"
+                  >
+                    Download to View
+                  </Button>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {document.associations && (
-            <div className="px-6 py-4 border-t">
+            <div className="mt-6 pt-6 border-t">
               <h2 className="text-lg font-semibold mb-2">Associations</h2>
-              
               {document.associations.properties && document.associations.properties.length > 0 && (
                 <div className="mb-3">
                   <h3 className="text-sm font-medium text-gray-700">Properties:</h3>
@@ -196,7 +169,6 @@ export default function DocumentViewComponent({ document, onClose, onDelete }: D
                   </div>
                 </div>
               )}
-              
               {document.associations.people && document.associations.people.length > 0 && (
                 <div className="mb-3">
                   <h3 className="text-sm font-medium text-gray-700">People:</h3>
@@ -209,7 +181,6 @@ export default function DocumentViewComponent({ document, onClose, onDelete }: D
                   </div>
                 </div>
               )}
-              
               {document.associations.groups && document.associations.groups.length > 0 && (
                 <div>
                   <h3 className="text-sm font-medium text-gray-700">Groups:</h3>
@@ -225,14 +196,7 @@ export default function DocumentViewComponent({ document, onClose, onDelete }: D
             </div>
           )}
         </div>
-      ) : (
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin h-8 w-8 border-4 border-primary rounded-full border-t-transparent mx-auto"></div>
-            <p className="mt-4 text-gray-500">Loading document...</p>
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
