@@ -75,7 +75,7 @@ const StateBadgeRenderer = (params: ICellRendererParams) => {
   switch (state) {
     case "Attention needed!":
       return (
-        <Badge variant="outline" className="flex items-center px-3 py-1 text-xs font-medium border-red-200 bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
+        <Badge variant="outline" className="flex items-center px-3 py-1 text-xs font-medium text-red-500 border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
           <AlertTriangleIcon className="h-3 w-3 mr-1.5 text-red-500" />
           <span>Attention needed!</span>
         </Badge>
@@ -169,14 +169,28 @@ const formatDate = (params: ICellRendererParams) => {
 
 // View Action Cell Renderer
 const ViewActionRenderer = (params: ICellRendererParams) => {
-  const context = params.context;
+  const { onConversationClick } = params.context || {};
   
   return (
     <div className="flex justify-center">
       <Button
         variant="ghost"
         size="icon"
-        onClick={() => context.onConversationClick(params.data)}
+        onClick={() => {
+          console.log('Eye icon clicked');
+          console.log('Context:', params.context);
+          console.log('Data:', params.data);
+          
+          if (onConversationClick && params.data) {
+            console.log('Calling onConversationClick with data');
+            onConversationClick(params.data);
+          } else {
+            console.error('Missing onConversationClick or data:', { 
+              hasCallback: !!onConversationClick, 
+              hasData: !!params.data 
+            });
+          }
+        }}
         className="h-8 w-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
         title="View details"
       >
@@ -415,9 +429,12 @@ export default function AIConversationsAgGrid({
   }, []);
   
   // Context for the grid
-  const context = useMemo(() => ({
-    onConversationClick
-  }), [onConversationClick]);
+  const context = useMemo(() => {
+    console.log('Creating grid context with onConversationClick:', !!onConversationClick);
+    return {
+      onConversationClick
+    };
+  }, [onConversationClick]);
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
@@ -452,7 +469,12 @@ export default function AIConversationsAgGrid({
           {showNeedsAttention ? "All Conversations" : "Needs Attention"}
         </Button>
       </div>
-      <div className="h-[550px] ag-theme-custom">
+      <div className="h-[600px] ag-theme-custom"
+        style={{
+          height: '600px',
+          width: '100%'
+        }}
+      >
         <style jsx global>{`
           .ag-theme-custom {
             --ag-header-height: 50px;

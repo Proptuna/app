@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ArrowLeftIcon,
   MessageSquareIcon,
@@ -15,6 +15,7 @@ import {
   PhoneIcon,
   ThumbsUpIcon,
   ThumbsDownIcon,
+  XIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -87,11 +88,20 @@ interface AIConversationDetailProps {
 }
 
 export function AIConversationDetail({ conversation, onClose }: AIConversationDetailProps) {
+  console.log('AIConversationDetail rendering with conversation:', conversation);
+  
   const [activeTab, setActiveTab] = useState("overview");
   const [newMessage, setNewMessage] = useState("");
   const [showResolutionActions, setShowResolutionActions] = useState(
     conversation.needsAttention || false,
   );
+
+  useEffect(() => {
+    console.log('AIConversationDetail mounted');
+    return () => {
+      console.log('AIConversationDetail unmounted');
+    };
+  }, []);
 
   const handleSendMessage = () => {
     if (newMessage.trim()) {
@@ -112,508 +122,345 @@ export function AIConversationDetail({ conversation, onClose }: AIConversationDe
   };
 
   const handleRejectSuggestedAction = () => {
-    // In a real app, this would reject the suggested action
+    // In a real app, this would mark the suggested action as rejected
     console.log("Rejected suggested action");
     setShowResolutionActions(false);
   };
 
-  return (
-    <div
-      className="fixed inset-0 bg-white dark:bg-gray-900 z-50 flex flex-col overflow-hidden transition-all duration-300 animate-in slide-in-from-right"
-    >
-      <header
-        className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700"
-      >
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onClose}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeftIcon className="h-4 w-4" />
-          Back to Dashboard
-        </Button>
-        {conversation.state && (
-          <Badge
-            className={`${
-              conversation.state === "task created"
-                ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                : conversation.state === "chat ended"
-                  ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                  : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-            }`}
-          >
-            {conversation.state}
-          </Badge>
-        )}
-      </header>
+  // Format the date for display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
 
-      <div className="flex-1 overflow-auto p-6">
+  // Generate initials for avatar fallback
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
+  };
+
+  return (
+    <div className="bg-white dark:bg-gray-800 flex flex-col h-[600px]">
+      <div className="border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between sticky top-0 bg-white dark:bg-gray-800 z-10">
+        <div className="flex items-center">
+          <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
+            <ArrowLeftIcon className="h-4 w-4" />
+          </Button>
+          <h2 className="text-xl font-semibold truncate max-w-[500px]">{conversation.overview}</h2>
+          {conversation.needsAttention && (
+            <Badge variant="outline" className="ml-2 text-red-500 border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
+              Needs Attention
+            </Badge>
+          )}
+        </div>
+        <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+          <XIcon className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      <div className="p-4 overflow-y-auto flex-grow">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left column - Conversation overview and property info */}
+          {/* Left column - Conversation details */}
           <div className="lg:col-span-2">
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle
-                  className="flex justify-between items-center"
-                >
-                  <span>AI Conversation Overview</span>
-                  {conversation.state && (
-                    <Badge
-                      className={`${
-                        conversation.state === "task created"
-                          ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                          : conversation.state === "chat ended"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                            : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-                      }`}
-                    >
-                      {conversation.state}
+            <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="mb-4 w-full justify-start border-b rounded-none p-0 h-auto">
+                <TabsTrigger value="overview" className="flex items-center rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-4">
+                  <MessageSquareIcon className="h-4 w-4 mr-2" />
+                  Conversation
+                </TabsTrigger>
+                <TabsTrigger value="tasks" className="flex items-center rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-4">
+                  <ClipboardListIcon className="h-4 w-4 mr-2" />
+                  Tasks
+                  {conversation.tasks && conversation.tasks.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">
+                      {conversation.tasks.length}
                     </Badge>
                   )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <h3
-                    className="text-sm font-medium text-gray-500 dark:text-gray-400"
-                  >
-                    Description
-                  </h3>
-                  <p className="text-xl font-semibold mt-1">
-                    {conversation.overview}
-                  </p>
-                </div>
-
-                <div
-                  className="grid grid-cols-1 md:grid-cols-2 gap-6"
-                >
-                  <div>
-                    <h3
-                      className="text-sm font-medium text-gray-500 dark:text-gray-400"
-                    >
-                      Property
-                    </h3>
-                    <p className="text-base font-medium mt-1">
-                      {conversation.property?.address}
-                      {conversation.property?.unit && `, Apt ${conversation.property.unit}`}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3
-                      className="text-sm font-medium text-gray-500 dark:text-gray-400"
-                    >
-                      Reported by
-                    </h3>
-                    <p className="text-base font-medium mt-1">
-                      {conversation.person?.name}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3
-                      className="text-sm font-medium text-gray-500 dark:text-gray-400"
-                    >
-                      Date
-                    </h3>
-                    <p className="text-base font-medium mt-1">
-                      {conversation.date}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3
-                      className="text-sm font-medium text-gray-500 dark:text-gray-400"
-                    >
-                      Contact
-                    </h3>
-                    <p className="text-base font-medium mt-1">
-                      {conversation.person?.email}
-                    </p>
-                  </div>
-                </div>
-
-                {conversation.property && (
-                  <PropertyInfo property={conversation.property} />
-                )}
-
-                {showResolutionActions && conversation.suggestedAction && (
-                  <div
-                    className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mt-4"
-                  >
-                    <h3
-                      className="font-medium text-amber-800 dark:text-amber-400 mb-2"
-                    >
-                      Suggested Action
-                    </h3>
-                    <p
-                      className="text-amber-700 dark:text-amber-300 mb-4"
-                    >
-                      {conversation.suggestedAction}
-                    </p>
-                    <div className="flex gap-3">
-                      <Button
-                        onClick={handleAcceptSuggestedAction}
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        <ThumbsUpIcon className="h-4 w-4 mr-2" />
-                        Accept
-                      </Button>
-                      <Button
-                        onClick={handleRejectSuggestedAction}
-                        variant="outline"
-                        className="text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20"
-                      >
-                        <ThumbsDownIcon className="h-4 w-4 mr-2" />
-                        Reject
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Tabs
-              defaultValue="conversations"
-              value={activeTab}
-              onValueChange={setActiveTab}
-              className="w-full"
-            >
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger
-                  value="conversations"
-                  className="flex items-center gap-2"
-                >
-                  <MessageSquareIcon className="h-4 w-4" />
-                  Conversations
                 </TabsTrigger>
-                <TabsTrigger
-                  value="tasks"
-                  className="flex items-center gap-2"
-                >
-                  <ClipboardListIcon className="h-4 w-4" />
-                  Tasks
+                <TabsTrigger value="documents" className="flex items-center rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-4">
+                  <FileTextIcon className="h-4 w-4 mr-2" />
+                  Documents
+                  {conversation.documents && conversation.documents.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">
+                      {conversation.documents.length}
+                    </Badge>
+                  )}
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="conversations" className="mt-4">
-                <Card>
-                  <CardContent className="p-4">
-                    {conversation.conversation && conversation.conversation.length > 0 ? (
-                      <div
-                        className="space-y-4 max-h-[400px] overflow-y-auto p-2"
-                      >
-                        {conversation.conversation.map((msg, index) => (
-                          <div
-                            key={index}
-                            className={`flex ${
-                              msg.sender === "user"
-                                ? "justify-end"
-                                : "justify-start"
-                            }`}
-                            id={`5ysmj4_${index}`}
+              <TabsContent value="overview" className="space-y-4">
+                {showResolutionActions && conversation.suggestedAction && (
+                  <Card className="bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800">
+                    <CardContent className="p-4">
+                      <div className="flex flex-col space-y-3">
+                        <div className="font-medium">Suggested Action:</div>
+                        <div className="text-sm">{conversation.suggestedAction}</div>
+                        <div className="flex space-x-2 mt-2">
+                          <Button
+                            size="sm"
+                            onClick={handleAcceptSuggestedAction}
+                            className="flex items-center"
                           >
-                            {msg.sender !== "user" && (
-                              <Avatar
-                                className="h-8 w-8 mr-2"
-                                id={`kwx549_${index}`}
-                              >
-                                <AvatarImage
-                                  src={
-                                    msg.avatar ||
-                                    "https://github.com/polymet-ai.png"
-                                  }
-                                  id={`wp8gny_${index}`}
-                                />
+                            <ThumbsUpIcon className="h-4 w-4 mr-2" />
+                            Accept
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRejectSuggestedAction}
+                            className="flex items-center"
+                          >
+                            <ThumbsDownIcon className="h-4 w-4 mr-2" />
+                            Reject
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
-                                <AvatarFallback id={`z9hy61_${index}`}>
-                                  {msg.sender.charAt(0).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                            )}
-
-                            <div
-                              className={`max-w-[70%] p-3 rounded-lg ${
-                                msg.sender === "user"
-                                  ? "bg-indigo-600 text-white"
-                                  : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                              }`}
-                              id={`rjb7la_${index}`}
-                            >
-                              <div className="text-sm" id={`u3cz5w_${index}`}>
-                                {msg.message}
-                              </div>
-                              <div
-                                className="text-xs mt-1 opacity-70"
-                                id={`vs8iyc_${index}`}
-                              >
-                                {msg.timestamp}
-                              </div>
-                            </div>
-
-                            {msg.sender === "user" && (
-                              <Avatar
-                                className="h-8 w-8 ml-2"
-                                id={`ib4dsr_${index}`}
-                              >
-                                <AvatarImage
-                                  src="https://github.com/yusufhilmi.png"
-                                  id={`ak09i1_${index}`}
-                                />
-                                <AvatarFallback id={`5ymep3_${index}`}>
-                                  U
-                                </AvatarFallback>
-                              </Avatar>
+                <div className="space-y-4 max-h-[400px] overflow-y-auto p-1 pr-2">
+                  {conversation.conversation?.map((msg, index) => (
+                    <div
+                      key={index}
+                      className={`flex ${
+                        msg.sender === "AI" ? "justify-start" : "justify-end"
+                      }`}
+                    >
+                      <div
+                        className={`flex max-w-[80%] ${
+                          msg.sender === "AI" ? "flex-row" : "flex-row-reverse"
+                        }`}
+                      >
+                        <Avatar
+                          className={`h-8 w-8 ${
+                            msg.sender === "AI" ? "mr-2" : "ml-2"
+                          }`}
+                        >
+                          <AvatarImage src={msg.avatar} />
+                          <AvatarFallback>
+                            {msg.sender === "AI" ? "AI" : "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div
+                            className={`px-4 py-2 rounded-lg ${
+                              msg.sender === "AI"
+                                ? "bg-gray-100 dark:bg-gray-700"
+                                : "bg-blue-100 dark:bg-blue-900"
+                            }`}
+                          >
+                            <p className="text-sm">{msg.message}</p>
+                          </div>
+                          <div
+                            className={`text-xs text-gray-500 mt-1 ${
+                              msg.sender === "AI" ? "text-left" : "text-right"
+                            }`}
+                          >
+                            {new Date(msg.timestamp).toLocaleTimeString(
+                              "en-US",
+                              {
+                                hour: "numeric",
+                                minute: "numeric",
+                              }
                             )}
                           </div>
-                        ))}
+                        </div>
                       </div>
-                    ) : (
-                      <div
-                        className="text-center text-gray-500 dark:text-gray-400 py-8"
-                      >
-                        No conversation history available.
-                      </div>
-                    )}
+                    </div>
+                  ))}
+                </div>
 
-                    {conversation.isLive && (
-                      <div
-                        className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4 flex"
-                      >
-                        <Input
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          placeholder="Type your message..."
-                          className="flex-1 mr-2"
-                          onKeyDown={(e) =>
-                            e.key === "Enter" && handleSendMessage()
-                          }
-                        />
-
-                        <Button onClick={handleSendMessage}>
-                          <SendIcon className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                {conversation.isLive && (
+                  <div className="flex mt-4 sticky bottom-0 bg-white dark:bg-gray-800 pt-2 pb-1 border-t border-gray-100 dark:border-gray-700">
+                    <Input
+                      placeholder="Type a message..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      className="flex-1 mr-2"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSendMessage();
+                      }}
+                    />
+                    <Button onClick={handleSendMessage}>
+                      <SendIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </TabsContent>
 
-              <TabsContent value="tasks" className="mt-4">
-                <Card>
-                  <CardContent className="p-4">
-                    {conversation.tasks && conversation.tasks.length > 0 ? (
-                      <div className="space-y-4">
-                        {conversation.tasks.map((task, index) => (
-                          <Card
-                            key={task.id}
-                            className="overflow-hidden border border-gray-200 dark:border-gray-700"
-                            id={`pgo022_${index}`}
-                          >
-                            <CardHeader
-                              className="p-4 pb-2 flex flex-row items-start justify-between"
-                              id={`6e3izr_${index}`}
-                            >
-                              <div id={`k2ehrv_${index}`}>
-                                <CardTitle
-                                  className="text-lg"
-                                  id={`uxxnyx_${index}`}
-                                >
-                                  {task.description}
-                                </CardTitle>
-                                <div
-                                  className="text-sm text-gray-500 dark:text-gray-400 mt-1"
-                                  id={`elqxjj_${index}`}
-                                >
-                                  Created on {task.created} by {task.createdBy}
-                                </div>
+              <TabsContent value="tasks" className="space-y-4">
+                {conversation.tasks && conversation.tasks.length > 0 ? (
+                  <div className="space-y-4">
+                    {conversation.tasks.map((task) => (
+                      <Card key={task.id}>
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="font-medium">{task.description}</div>
+                              <div className="text-sm text-gray-500 mt-1">
+                                Created on {formatDate(task.created)} by{" "}
+                                {task.createdBy}
                               </div>
-                              <Badge
-                                className={
-                                  task.status === "open"
-                                    ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                                    : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                                }
-                                id={`348bsc_${index}`}
-                              >
-                                {task.status}
-                              </Badge>
-                            </CardHeader>
-                            <CardContent
-                              className="p-4 pt-2"
-                              id={`1oab7u_${index}`}
-                            >
-                              <div className="mb-4" id={`aqpzqv_${index}`}>
-                                <h4
-                                  className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                                  id={`creg55_${index}`}
-                                >
-                                  Notified:
-                                </h4>
-                                <div
-                                  className="flex flex-wrap gap-2"
-                                  id={`jklguo_${index}`}
-                                >
-                                  {task.notified.map((person, idx) => (
-                                    <Badge
-                                      key={idx}
-                                      variant="outline"
-                                      id={`lkxhpu_${idx}`}
-                                    >
-                                      {person}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {task.photos && task.photos.length > 0 && (
-                                <div className="mb-4" id={`fzudsz_${index}`}>
-                                  <h4
-                                    className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                                    id={`8zzyrl_${index}`}
-                                  >
-                                    Photos:
-                                  </h4>
-                                  <div
-                                    className="flex gap-2 overflow-x-auto pb-2"
-                                    id={`dp3qf5_${index}`}
-                                  >
-                                    {task.photos.map((photo, idx) => (
-                                      <img
-                                        key={idx}
-                                        src={photo}
-                                        alt={`Task photo ${idx + 1}`}
-                                        className="h-20 w-20 object-cover rounded-md"
-                                        id={`rl9nlx_${idx}`}
-                                      />
-                                    ))}
-                                  </div>
+                              {task.notified.length > 0 && (
+                                <div className="text-sm text-gray-500 mt-1">
+                                  Notified: {task.notified.join(", ")}
                                 </div>
                               )}
-
-                              {task.status === "open" && (
-                                <Button
-                                  onClick={() => handleCloseTask(task.id)}
-                                  className="mt-2"
-                                  variant="outline"
-                                  id={`ablfct_${index}`}
-                                >
-                                  <CheckIcon
-                                    className="h-4 w-4 mr-2"
-                                    id={`bxa7nz_${index}`}
-                                  />
-                                  Mark as Closed
-                                </Button>
-                              )}
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    ) : (
-                      <div
-                        className="text-center text-gray-500 dark:text-gray-400 py-8"
-                      >
-                        No tasks available for this AI conversation.
-                      </div>
-                    )}
-
-                    <Button className="mt-4" variant="outline">
+                            </div>
+                            <Badge
+                              variant={
+                                task.status === "open" ? "secondary" : "outline"
+                              }
+                              className="ml-2"
+                            >
+                              {task.status}
+                            </Badge>
+                          </div>
+                          {task.status === "open" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-3"
+                              onClick={() => handleCloseTask(task.id)}
+                            >
+                              <CheckIcon className="h-3 w-3 mr-2" />
+                              Mark as Complete
+                            </Button>
+                          )}
+                          {task.photos && task.photos.length > 0 && (
+                            <div className="mt-3 flex space-x-2">
+                              {task.photos.map((photo, index) => (
+                                <img
+                                  key={index}
+                                  src={photo}
+                                  alt={`Task photo ${index + 1}`}
+                                  className="h-16 w-16 object-cover rounded"
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <ClipboardListIcon className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                    <p>No tasks have been created for this conversation.</p>
+                    <Button className="mt-4">
                       <PlusIcon className="h-4 w-4 mr-2" />
-                      Create New Task
+                      Create Task
                     </Button>
-                  </CardContent>
-                </Card>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="documents" className="space-y-4">
+                {conversation.documents && conversation.documents.length > 0 ? (
+                  <div className="space-y-2">
+                    {conversation.documents.map((doc, index) => (
+                      <Card key={index}>
+                        <CardContent className="p-3 flex items-center">
+                          <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/30 rounded flex items-center justify-center mr-3">
+                            {doc.icon || <FileTextIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium">{doc.title}</div>
+                            <div className="text-xs text-gray-500">{doc.type}</div>
+                          </div>
+                          <Button variant="ghost" size="sm">
+                            View
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <FileTextIcon className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                    <p>No documents attached to this conversation.</p>
+                    <Button className="mt-4">
+                      <PlusIcon className="h-4 w-4 mr-2" />
+                      Attach Document
+                    </Button>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>
 
-          {/* Right column - Documents and contact info */}
-          <div className="lg:col-span-1">
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>Documents</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {conversation.documents && conversation.documents.length > 0 ? (
-                  <div className="space-y-4">
-                    {conversation.documents.map((doc, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                        id={`by69a9_${index}`}
-                      >
-                        <FileTextIcon
-                          className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-3"
-                          id={`d9jr9x_${index}`}
-                        />
-                        <div id={`t7znof_${index}`}>
-                          <div className="font-medium" id={`btcrb1_${index}`}>
-                            {doc.title}
-                          </div>
-                          <div
-                            className="text-sm text-gray-500 dark:text-gray-400"
-                            id={`fwq6cs_${index}`}
-                          >
-                            {doc.type}
-                          </div>
-                        </div>
+          {/* Right column - Property and person info */}
+          <div className="space-y-4">
+            {conversation.property && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center">
+                    <BuildingIcon className="h-4 w-4 mr-2" />
+                    Property
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="font-medium">
+                      {conversation.property.address}
+                      {conversation.property.unit && `, Unit ${conversation.property.unit}`}
+                    </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                      {conversation.property.city}, {conversation.property.state}{" "}
+                      {conversation.property.zip}
+                    </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                      Type: {conversation.property.type}
+                    </div>
+                    {conversation.property.owner && (
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Owner: {conversation.property.owner}
                       </div>
-                    ))}
+                    )}
+                    {conversation.property.manager && (
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Manager: {conversation.property.manager}
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div
-                    className="text-center text-gray-500 dark:text-gray-400 py-4"
-                  >
-                    No documents available.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
             {conversation.person && (
               <Card>
-                <CardHeader>
-                  <CardTitle>Contact Information</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center">
+                    <UserIcon className="h-4 w-4 mr-2" />
+                    Contact
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center space-x-4 mb-4">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage
-                        src={
-                          conversation.person.avatar ||
-                          "https://github.com/yusufhilmi.png"
-                        }
-                        alt={conversation.person.name}
-                      />
-
+                  <div className="flex items-center mb-3">
+                    <Avatar className="h-10 w-10 mr-3">
+                      <AvatarImage src={conversation.person.avatar} />
                       <AvatarFallback>
-                        {conversation.person.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
+                        {getInitials(conversation.person.name)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <h3 className="font-medium">
-                        {conversation.person.name}
-                      </h3>
-                      <p
-                        className="text-sm text-gray-500 dark:text-gray-400"
-                      >
-                        Tenant
-                      </p>
+                      <div className="font-medium">{conversation.person.name}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        {conversation.person.email}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="space-y-3">
-                    <div className="flex items-center">
-                      <MailIcon
-                        className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2"
-                      />
-                      <span>{conversation.person.email}</span>
-                    </div>
-                    <div className="flex items-center">
+                  <div className="space-y-2">
+                    <div className="flex items-center text-sm">
                       <PhoneIcon
                         className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2"
                       />

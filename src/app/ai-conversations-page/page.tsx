@@ -91,11 +91,15 @@ export default function AIConversationsPage() {
   }, []);
 
   const handleConversationClick = (conversation: AIConversation) => {
+    console.log('handleConversationClick called with:', conversation);
     setSelectedConversation(conversation);
+    console.log('selectedConversation set to:', conversation);
   };
 
   const handleCloseDetail = () => {
+    console.log('handleCloseDetail called');
     setSelectedConversation(null);
+    console.log('selectedConversation set to null');
   };
 
   const handleSearch = (query: string) => {
@@ -136,22 +140,30 @@ export default function AIConversationsPage() {
           <RefreshCwIcon className="h-8 w-8 animate-spin text-gray-400" />
         </div>
       ) : (
-        <AIConversationsAgGrid
-          conversations={searchedConversations}
-          onConversationClick={handleConversationClick}
-          onSearch={handleSearch}
-          searchQuery={searchQuery}
-          onFilterToggle={handleFilterToggle}
-          showNeedsAttention={showNeedsAttention}
-          isLoading={loading}
-        />
-      )}
-
-      {selectedConversation && (
-        <AIConversationDetail
-          conversation={selectedConversation}
-          onClose={handleCloseDetail}
-        />
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+          <div className="relative">
+            <div className={`transition-all duration-300 ${selectedConversation ? 'translate-x-[-100%]' : 'translate-x-0'}`}>
+              <AIConversationsAgGrid
+                conversations={searchedConversations}
+                onConversationClick={handleConversationClick}
+                onSearch={handleSearch}
+                searchQuery={searchQuery}
+                onFilterToggle={handleFilterToggle}
+                showNeedsAttention={showNeedsAttention}
+                isLoading={loading}
+              />
+            </div>
+            
+            <div className={`absolute top-0 left-0 w-full h-full transition-all duration-300 ${selectedConversation ? 'translate-x-0' : 'translate-x-[100%]'}`}>
+              {selectedConversation && (
+                <AIConversationDetail
+                  conversation={selectedConversation}
+                  onClose={handleCloseDetail}
+                />
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
