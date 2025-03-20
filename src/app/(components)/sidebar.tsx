@@ -44,7 +44,7 @@ export function Sidebar({
 }: SidebarProps) {
   const navItems = [
     { id: "ai", label: "AI", icon: MessageSquareIcon },
-    { id: "jobs", label: "Jobs", icon: HomeIcon },
+    { id: "ai-conversations", label: "AI Conversations", icon: HomeIcon },
     { id: "properties", label: "Properties", icon: BuildingIcon },
     { id: "people", label: "People", icon: UserIcon },
     { id: "documents", label: "Documents", icon: FileTextIcon },

@@ -4,7 +4,7 @@ import "./globals.css";
 
 import React, { useState } from "react";
 import Layout from "pages/layout";
-import JobsPage from "pages/jobs-page";
+import AIConversationsPage from "pages/ai-conversations-page";
 import AIPage from "pages/ai-page";
 import PropertiesPage from "pages/properties-page";
 import PeoplePage from "pages/people-page";
@@ -13,12 +13,12 @@ import DocumentsPage from "pages/documents-page";
 import { Analytics } from "@vercel/analytics/react"
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<string>("jobs");
+  const [currentPage, setCurrentPage] = useState<string>("ai-conversations");
 
   const renderPage = () => {
     switch (currentPage) {
-      case "jobs":
-        return <JobsPage />;
+      case "ai-conversations":
+        return <AIConversationsPage />;
       case "ai":
         return <AIPage />;
       case "properties":

@@ -66,7 +66,7 @@ interface Contact {
   avatar?: string;
 }
 
-interface Job {
+interface AIConversation {
   id: string;
   state: string;
   overview: string;
@@ -81,16 +81,16 @@ interface Job {
   suggestedAction?: string;
 }
 
-interface JobDetailProps {
-  job: Job;
+interface AIConversationDetailProps {
+  conversation: AIConversation;
   onClose: () => void;
 }
 
-export function JobDetail({ job, onClose }: JobDetailProps) {
+export function AIConversationDetail({ conversation, onClose }: AIConversationDetailProps) {
   const [activeTab, setActiveTab] = useState("overview");
   const [newMessage, setNewMessage] = useState("");
   const [showResolutionActions, setShowResolutionActions] = useState(
-    job.needsAttention || false,
+    conversation.needsAttention || false,
   );
 
   const handleSendMessage = () => {
@@ -133,42 +133,42 @@ export function JobDetail({ job, onClose }: JobDetailProps) {
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Dashboard
         </Button>
-        {job.state && (
+        {conversation.state && (
           <Badge
             className={`${
-              job.state === "task created"
+              conversation.state === "task created"
                 ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                : job.state === "chat ended"
+                : conversation.state === "chat ended"
                   ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
                   : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
             }`}
           >
-            {job.state}
+            {conversation.state}
           </Badge>
         )}
       </header>
 
       <div className="flex-1 overflow-auto p-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left column - Job overview and property info */}
+          {/* Left column - Conversation overview and property info */}
           <div className="lg:col-span-2">
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle
                   className="flex justify-between items-center"
                 >
-                  <span>Job Overview</span>
-                  {job.state && (
+                  <span>AI Conversation Overview</span>
+                  {conversation.state && (
                     <Badge
                       className={`${
-                        job.state === "task created"
+                        conversation.state === "task created"
                           ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                          : job.state === "chat ended"
+                          : conversation.state === "chat ended"
                             ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
                             : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
                       }`}
                     >
-                      {job.state}
+                      {conversation.state}
                     </Badge>
                   )}
                 </CardTitle>
@@ -181,7 +181,7 @@ export function JobDetail({ job, onClose }: JobDetailProps) {
                     Description
                   </h3>
                   <p className="text-xl font-semibold mt-1">
-                    {job.overview}
+                    {conversation.overview}
                   </p>
                 </div>
 
@@ -195,8 +195,8 @@ export function JobDetail({ job, onClose }: JobDetailProps) {
                       Property
                     </h3>
                     <p className="text-base font-medium mt-1">
-                      {job.property?.address}
-                      {job.property?.unit && `, Apt ${job.property.unit}`}
+                      {conversation.property?.address}
+                      {conversation.property?.unit && `, Apt ${conversation.property.unit}`}
                     </p>
                   </div>
 
@@ -207,7 +207,7 @@ export function JobDetail({ job, onClose }: JobDetailProps) {
                       Reported by
                     </h3>
                     <p className="text-base font-medium mt-1">
-                      {job.person?.name}
+                      {conversation.person?.name}
                     </p>
                   </div>
 
@@ -218,7 +218,7 @@ export function JobDetail({ job, onClose }: JobDetailProps) {
                       Date
                     </h3>
                     <p className="text-base font-medium mt-1">
-                      {job.date}
+                      {conversation.date}
                     </p>
                   </div>
 
@@ -229,16 +229,16 @@ export function JobDetail({ job, onClose }: JobDetailProps) {
                       Contact
                     </h3>
                     <p className="text-base font-medium mt-1">
-                      {job.person?.email}
+                      {conversation.person?.email}
                     </p>
                   </div>
                 </div>
 
-                {job.property && (
-                  <PropertyInfo property={job.property} />
+                {conversation.property && (
+                  <PropertyInfo property={conversation.property} />
                 )}
 
-                {showResolutionActions && job.suggestedAction && (
+                {showResolutionActions && conversation.suggestedAction && (
                   <div
                     className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mt-4"
                   >
@@ -250,7 +250,7 @@ export function JobDetail({ job, onClose }: JobDetailProps) {
                     <p
                       className="text-amber-700 dark:text-amber-300 mb-4"
                     >
-                      {job.suggestedAction}
+                      {conversation.suggestedAction}
                     </p>
                     <div className="flex gap-3">
                       <Button
@@ -300,11 +300,11 @@ export function JobDetail({ job, onClose }: JobDetailProps) {
               <TabsContent value="conversations" className="mt-4">
                 <Card>
                   <CardContent className="p-4">
-                    {job.conversation && job.conversation.length > 0 ? (
+                    {conversation.conversation && conversation.conversation.length > 0 ? (
                       <div
                         className="space-y-4 max-h-[400px] overflow-y-auto p-2"
                       >
-                        {job.conversation.map((msg, index) => (
+                        {conversation.conversation.map((msg, index) => (
                           <div
                             key={index}
                             className={`flex ${
@@ -377,7 +377,7 @@ export function JobDetail({ job, onClose }: JobDetailProps) {
                       </div>
                     )}
 
-                    {job.isLive && (
+                    {conversation.isLive && (
                       <div
                         className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4 flex"
                       >
@@ -403,9 +403,9 @@ export function JobDetail({ job, onClose }: JobDetailProps) {
               <TabsContent value="tasks" className="mt-4">
                 <Card>
                   <CardContent className="p-4">
-                    {job.tasks && job.tasks.length > 0 ? (
+                    {conversation.tasks && conversation.tasks.length > 0 ? (
                       <div className="space-y-4">
-                        {job.tasks.map((task, index) => (
+                        {conversation.tasks.map((task, index) => (
                           <Card
                             key={task.id}
                             className="overflow-hidden border border-gray-200 dark:border-gray-700"
@@ -514,7 +514,7 @@ export function JobDetail({ job, onClose }: JobDetailProps) {
                       <div
                         className="text-center text-gray-500 dark:text-gray-400 py-8"
                       >
-                        No tasks available for this job.
+                        No tasks available for this AI conversation.
                       </div>
                     )}
 
@@ -535,9 +535,9 @@ export function JobDetail({ job, onClose }: JobDetailProps) {
                 <CardTitle>Documents</CardTitle>
               </CardHeader>
               <CardContent>
-                {job.documents && job.documents.length > 0 ? (
+                {conversation.documents && conversation.documents.length > 0 ? (
                   <div className="space-y-4">
-                    {job.documents.map((doc, index) => (
+                    {conversation.documents.map((doc, index) => (
                       <div
                         key={index}
                         className="flex items-center p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
@@ -571,7 +571,7 @@ export function JobDetail({ job, onClose }: JobDetailProps) {
               </CardContent>
             </Card>
 
-            {job.person && (
+            {conversation.person && (
               <Card>
                 <CardHeader>
                   <CardTitle>Contact Information</CardTitle>
@@ -581,14 +581,14 @@ export function JobDetail({ job, onClose }: JobDetailProps) {
                     <Avatar className="h-12 w-12">
                       <AvatarImage
                         src={
-                          job.person.avatar ||
+                          conversation.person.avatar ||
                           "https://github.com/yusufhilmi.png"
                         }
-                        alt={job.person.name}
+                        alt={conversation.person.name}
                       />
 
                       <AvatarFallback>
-                        {job.person.name
+                        {conversation.person.name
                           .split(" ")
                           .map((n) => n[0])
                           .join("")}
@@ -596,7 +596,7 @@ export function JobDetail({ job, onClose }: JobDetailProps) {
                     </Avatar>
                     <div>
                       <h3 className="font-medium">
-                        {job.person.name}
+                        {conversation.person.name}
                       </h3>
                       <p
                         className="text-sm text-gray-500 dark:text-gray-400"
@@ -611,13 +611,13 @@ export function JobDetail({ job, onClose }: JobDetailProps) {
                       <MailIcon
                         className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2"
                       />
-                      <span>{job.person.email}</span>
+                      <span>{conversation.person.email}</span>
                     </div>
                     <div className="flex items-center">
                       <PhoneIcon
                         className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-2"
                       />
-                      <span>{job.person.phone}</span>
+                      <span>{conversation.person.phone}</span>
                     </div>
                   </div>
 
