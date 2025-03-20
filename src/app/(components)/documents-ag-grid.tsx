@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { ColDef, GridReadyEvent, ICellRendererParams } from "ag-grid-community";
 import {
@@ -16,6 +16,8 @@ import {
   DownloadIcon,
   PencilIcon,
   TrashIcon,
+  Search,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -38,6 +40,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { AlertCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 // Import AG Grid styles
 import "ag-grid-community/styles/ag-grid.css";
@@ -62,8 +65,9 @@ export interface Document {
 
 interface DocumentsAgGridProps {
   documents: Document[];
-  onDocumentDeleted?: (id: string) => void;
-  onDocumentView?: (document: Document) => void;
+  onDocumentDeleted: (id: string) => void;
+  onDocumentView: (document: Document) => void;
+  isLoading?: boolean;
 }
 
 // Document type icon component
@@ -374,19 +378,122 @@ const ActionsRenderer = (params: ICellRendererParams) => {
 export default function DocumentsAgGrid({ 
   documents, 
   onDocumentDeleted,
-  onDocumentView
+  onDocumentView,
+  isLoading = false
 }: DocumentsAgGridProps) {
   const [gridApi, setGridApi] = useState<any>(null);
+  const [gridColumnApi, setGridColumnApi] = useState<any>(null);
+  const [quickFilterText, setQuickFilterText] = useState("");
+  const [filteredDocuments, setFilteredDocuments] = useState<Document[]>(documents);
+  
+  useEffect(() => {
+    setFilteredDocuments(documents);
+  }, [documents]);
+
+  // Filter documents based on search text
+  useEffect(() => {
+    if (!quickFilterText.trim()) {
+      setFilteredDocuments(documents);
+      return;
+    }
+    
+    const searchTerm = quickFilterText.toLowerCase().trim();
+    const filtered = documents.filter(doc => {
+      // Search in title
+      if (doc.title.toLowerCase().includes(searchTerm)) return true;
+      
+      // Search in type
+      if (doc.type.toLowerCase().includes(searchTerm)) return true;
+      
+      // Search in visibility
+      if (doc.visibility.toLowerCase().includes(searchTerm)) return true;
+      
+      // Search in document content
+      if (doc.data && doc.data.toLowerCase().includes(searchTerm)) return true;
+      
+      // Search in associations
+      if (doc.associations) {
+        // Search in properties
+        if (doc.associations.properties?.some(p => 
+          p.address.toLowerCase().includes(searchTerm)
+        )) return true;
+        
+        // Search in people
+        if (doc.associations.people?.some(p => 
+          p.name.toLowerCase().includes(searchTerm)
+        )) return true;
+        
+        // Search in groups
+        if (doc.associations.groups?.some(g => 
+          g.name.toLowerCase().includes(searchTerm)
+        )) return true;
+      }
+      
+      return false;
+    });
+    
+    setFilteredDocuments(filtered);
+  }, [documents, quickFilterText]);
   
   const onGridReady = useCallback((params: GridReadyEvent) => {
     setGridApi(params.api);
+    // In newer versions of AG Grid, columnApi is accessed as a property of the api
+    setGridColumnApi((params as any).columnApi);
     
     // Auto-size columns to fit the available width
     setTimeout(() => {
       params.api.sizeColumnsToFit();
     }, 0);
+
+    // Set default sorting by updated_at (newest first)
+    const columnApi = (params as any).columnApi;
+    if (columnApi) {
+      columnApi.applyColumnState({
+        state: [
+          {
+            colId: 'updated_at',
+            sort: 'desc'
+          }
+        ]
+      });
+    }
   }, []);
-  
+
+  // Show loading overlay when loading
+  useEffect(() => {
+    if (gridApi) {
+      if (isLoading) {
+        gridApi.showLoadingOverlay();
+      } else if (filteredDocuments.length === 0 && quickFilterText) {
+        gridApi.showNoRowsOverlay();
+      } else {
+        gridApi.hideOverlay();
+      }
+    }
+  }, [gridApi, isLoading, filteredDocuments.length, quickFilterText]);
+
+  // Handle quick filter text change
+  const onFilterTextChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setQuickFilterText(value);
+  }, []);
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (gridApi) {
+        setTimeout(() => {
+          gridApi.sizeColumnsToFit();
+        }, 0);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [gridApi]);
+
   const columnDefs: ColDef[] = [
     {
       headerName: "Document",
@@ -396,6 +503,10 @@ export default function DocumentsAgGrid({
       filter: true,
       flex: 2,
       minWidth: 200,
+      filterParams: {
+        filterOptions: ['contains', 'startsWith', 'endsWith'],
+        defaultOption: 'contains'
+      }
     },
     {
       headerName: "Type",
@@ -404,6 +515,10 @@ export default function DocumentsAgGrid({
       sortable: true,
       filter: true,
       width: 150,
+      filterParams: {
+        filterOptions: ['equals'],
+        defaultOption: 'equals'
+      }
     },
     {
       headerName: "Associations",
@@ -421,6 +536,10 @@ export default function DocumentsAgGrid({
       sortable: true,
       filter: true,
       width: 120,
+      filterParams: {
+        filterOptions: ['equals'],
+        defaultOption: 'equals'
+      }
     },
     {
       headerName: "Last Updated",
@@ -429,6 +548,11 @@ export default function DocumentsAgGrid({
       sortable: true,
       filter: true,
       width: 150,
+      sort: 'desc',
+      filterParams: {
+        filterOptions: ['equals', 'greaterThan', 'lessThan'],
+        defaultOption: 'greaterThan'
+      }
     },
     {
       headerName: "Actions",
@@ -441,9 +565,49 @@ export default function DocumentsAgGrid({
     },
   ];
   
-  const defaultColDef = {
+  // Default column definitions
+  const defaultColDef = useMemo(() => ({
     resizable: true,
-  };
+    suppressMovable: false,
+    sortable: true,
+    filter: true,
+    filterParams: {
+      buttons: ['reset', 'apply'],
+      closeOnApply: true
+    },
+    getQuickFilterText: (params: any) => {
+      // For title field, include the title
+      if (params.colDef.field === 'title') {
+        return params.value;
+      }
+      
+      // For type field, include the type
+      if (params.colDef.field === 'type') {
+        return params.value;
+      }
+      
+      // For visibility field, include the visibility
+      if (params.colDef.field === 'visibility') {
+        return params.value;
+      }
+      
+      // For associations, include property addresses, people names, and group names
+      if (params.colDef.field === 'associations' && params.value) {
+        const associations = params.value;
+        const propertyAddresses = associations.properties?.map((p: any) => p.address).join(' ') || '';
+        const peopleNames = associations.people?.map((p: any) => p.name).join(' ') || '';
+        const groupNames = associations.groups?.map((g: any) => g.name).join(' ') || '';
+        return `${propertyAddresses} ${peopleNames} ${groupNames}`;
+      }
+      
+      // For data field, include the document content
+      if (params.data && params.data.data) {
+        return params.data.data;
+      }
+      
+      return '';
+    }
+  }), []);
 
   const noRowsOverlayComponent = useMemo(() => {
     return () => (
@@ -457,6 +621,15 @@ export default function DocumentsAgGrid({
     );
   }, []);
   
+  const loadingOverlayComponent = useMemo(() => {
+    return () => (
+      <div className="flex flex-col items-center justify-center h-full p-12">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+        <p className="text-gray-500 mt-4">Loading documents...</p>
+      </div>
+    );
+  }, []);
+  
   // Context for the grid
   const context = useMemo(() => ({
     onDocumentDeleted,
@@ -464,18 +637,106 @@ export default function DocumentsAgGrid({
   }), [onDocumentDeleted, onDocumentView]);
 
   return (
-    <div className="ag-theme-alpine dark:ag-theme-alpine-dark h-[600px] w-full">
-      <AgGridReact
-        columnDefs={columnDefs}
-        rowData={documents}
-        defaultColDef={defaultColDef}
-        onGridReady={onGridReady}
-        animateRows={true}
-        pagination={false}
-        domLayout="autoHeight"
-        noRowsOverlayComponent={noRowsOverlayComponent}
-        context={context}
-      />
+    <div className="ag-theme-alpine dark:ag-theme-alpine-dark w-full rounded-md overflow-hidden">
+      <div className="p-4 border-b flex items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Search documents..."
+            value={quickFilterText}
+            onChange={onFilterTextChange}
+            className="pl-10"
+          />
+          {quickFilterText && (
+            <button
+              onClick={() => {
+                setQuickFilterText("");
+                if (gridApi) {
+                  gridApi.setQuickFilter("");
+                }
+              }}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="h-[550px]">
+        <style jsx global>{`
+          .ag-theme-alpine {
+            --ag-header-height: 50px;
+            --ag-header-foreground-color: #374151;
+            --ag-header-background-color: #f9fafb;
+            --ag-header-cell-hover-background-color: #f3f4f6;
+            --ag-header-cell-moving-background-color: #f3f4f6;
+            --ag-row-hover-color: #f9fafb;
+            --ag-selected-row-background-color: rgba(59, 130, 246, 0.1);
+            --ag-font-size: 14px;
+            --ag-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --ag-grid-size: 6px;
+            --ag-list-item-height: 30px;
+            --ag-cell-horizontal-padding: 12px;
+            --ag-borders: solid 1px;
+            --ag-border-color: #e5e7eb;
+            --ag-secondary-border-color: #e5e7eb;
+            --ag-row-border-color: #f3f4f6;
+            --ag-cell-horizontal-border: solid 1px var(--ag-border-color);
+            --ag-range-selection-border-color: rgba(59, 130, 246, 0.5);
+            --ag-range-selection-background-color: rgba(59, 130, 246, 0.1);
+          }
+          
+          .ag-theme-alpine-dark {
+            --ag-header-foreground-color: #e5e7eb;
+            --ag-header-background-color: #1f2937;
+            --ag-header-cell-hover-background-color: #374151;
+            --ag-header-cell-moving-background-color: #374151;
+            --ag-background-color: #111827;
+            --ag-foreground-color: #e5e7eb;
+            --ag-row-hover-color: #1f2937;
+            --ag-selected-row-background-color: rgba(59, 130, 246, 0.2);
+            --ag-border-color: #374151;
+            --ag-secondary-border-color: #374151;
+            --ag-row-border-color: #1f2937;
+          }
+          
+          .ag-theme-alpine .ag-header,
+          .ag-theme-alpine-dark .ag-header {
+            font-weight: 600;
+          }
+          
+          .ag-theme-alpine .ag-row,
+          .ag-theme-alpine-dark .ag-row {
+            border-bottom-style: solid;
+            border-bottom-width: 1px;
+            border-bottom-color: var(--ag-row-border-color);
+          }
+          
+          .ag-theme-alpine .ag-row-hover,
+          .ag-theme-alpine-dark .ag-row-hover {
+            background-color: var(--ag-row-hover-color);
+          }
+        `}</style>
+        <AgGridReact
+          columnDefs={columnDefs}
+          rowData={filteredDocuments}
+          defaultColDef={defaultColDef}
+          onGridReady={onGridReady}
+          animateRows={true}
+          pagination={true}
+          paginationPageSize={10}
+          paginationAutoPageSize={false}
+          domLayout="normal"
+          noRowsOverlayComponent={noRowsOverlayComponent}
+          loadingOverlayComponent={loadingOverlayComponent}
+          context={context}
+          rowSelection="single"
+          rowHeight={60}
+          suppressCellFocus={true}
+          enableCellTextSelection={true}
+          suppressRowClickSelection={true}
+        />
+      </div>
     </div>
   );
 }

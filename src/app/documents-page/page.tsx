@@ -15,6 +15,7 @@ import {
   Plus,
   Search,
   X,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { fetchDocuments, searchDocuments, fetchDocumentById, createDocument } from "@/lib/documents-client";
+import { fetchDocuments, fetchDocumentById, createDocument } from "@/lib/documents-client";
 import dynamic from "next/dynamic";
 
 // Dynamically import the document viewer
@@ -49,12 +50,9 @@ const FormLoader = () => (
 
 export default function DocumentsPage() {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [documentType, setDocumentType] = useState("all");
   const [documents, setDocuments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSearchMode, setIsSearchMode] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<any | null>(null);
   const [isViewingDocument, setIsViewingDocument] = useState(false);
   
@@ -64,68 +62,26 @@ export default function DocumentsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  // Debounced search
-  const debouncedSearch = useCallback(
-    debounce((query: string) => {
-      setIsSearchMode(!!query);
-      loadDocuments();
-    }, 300),
-    [documentType] // Needed to update when filters change
-  );
-
-  // Effect for search query changes
-  useEffect(() => {
-    debouncedSearch(searchQuery);
-  }, [searchQuery, debouncedSearch]);
-
   // Load documents from API
   const loadDocuments = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // If we have a search query, use the search endpoint, otherwise use the regular fetch endpoint
-      if (searchQuery) {
-        const params: any = {
-          query: searchQuery,
-        };
-
-        // Add document type filter if not "all"
-        if (documentType !== "all") {
-          params.type = documentType;
-        }
-
-        const response = await searchDocuments(params);
-        setDocuments(response.data || []);
-      } else {
-        const params: any = {};
-
-        // Add document type filter if not "all"
-        if (documentType !== "all") {
-          params.type = documentType;
-        }
-
-        const response = await fetchDocuments(params);
-        setDocuments(response.data || []);
-      }
+      const response = await fetchDocuments({});
+      setDocuments(response.data || []);
     } catch (err: any) {
       console.error("Error loading documents:", err);
       setError(err.message || "Failed to load documents. Please try again.");
     } finally {
       setIsLoading(false);
     }
-  }, [documentType, searchQuery]);
+  }, []);
 
   // Initial load
   useEffect(() => {
     loadDocuments();
   }, [loadDocuments]);
-
-  // Handle document type filter change
-  const handleTypeChange = (value: string) => {
-    setDocumentType(value);
-    loadDocuments();
-  };
 
   // Handle document selection for viewing
   const handleViewDocument = async (document: any) => {
@@ -303,8 +259,13 @@ export default function DocumentsPage() {
         </div>
       ) : (
         <div>
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold">Documents</h1>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
+              <p className="text-muted-foreground">
+                Manage your documents and policies
+              </p>
+            </div>
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="flex items-center gap-2">
@@ -369,97 +330,23 @@ export default function DocumentsPage() {
             </Dialog>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border">
-            <div className="p-4 border-b flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search documents..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Filter className="text-gray-400 h-4 w-4" />
-                <Select value={documentType} onValueChange={handleTypeChange}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="markdown">Markdown</SelectItem>
-                    <SelectItem value="file">File</SelectItem>
-                    <SelectItem value="escalation-policy">
-                      Escalation Policy
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+          {error ? (
+            <div className="border rounded-lg p-6">
+              <div className="flex items-center gap-2 text-red-600">
+                <AlertCircle className="h-5 w-5" />
+                <p>{error}</p>
               </div>
             </div>
-
-            <div className="mt-8">
-              {isLoading ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="text-center">
-                    <div className="animate-spin h-8 w-8 border-4 border-primary rounded-full border-t-transparent mx-auto"></div>
-                    <p className="mt-4 text-gray-500">Loading documents...</p>
-                  </div>
-                </div>
-              ) : error ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="text-center text-red-500">
-                    <p>{error}</p>
-                  </div>
-                </div>
-              ) : documents.length === 0 ? (
-                <div className="flex items-center justify-center h-64 border rounded-lg">
-                  <div className="text-center">
-                    <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No documents found</p>
-                    <p className="text-sm text-gray-400 mt-1">
-                      {searchQuery
-                        ? "Try a different search term or filter"
-                        : "Create your first document to get started"}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="overflow-hidden border rounded-lg">
-                  <DocumentsAgGrid 
-                    documents={documents} 
-                    onDocumentDeleted={handleDocumentDeleted}
-                    onDocumentView={handleViewDocument}
-                  />
-                </div>
-              )}
+          ) : (
+            <div className="overflow-hidden border rounded-lg">
+              <DocumentsAgGrid 
+                documents={documents} 
+                onDocumentDeleted={handleDocumentDeleted}
+                onDocumentView={handleViewDocument}
+                isLoading={isLoading}
+              />
             </div>
-
-            <div className="p-4 border-t flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                Showing {documents.length} documents
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" disabled>
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Previous
-                </Button>
-                <Button variant="outline" size="sm" disabled>
-                  Next
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       )}
     </div>
