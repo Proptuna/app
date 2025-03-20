@@ -99,6 +99,8 @@ export async function getDocuments(params: {
  * Get a single document by ID
  */
 export async function getDocumentById(id: string) {
+  console.log(`Server: Getting document with ID ${id}`);
+  
   const { data: document, error } = await supabase
     .from("documents")
     .select("*")
@@ -106,20 +108,32 @@ export async function getDocumentById(id: string) {
     .single();
 
   if (error) {
+    console.error(`Server: Error fetching document ${id}:`, error);
     throw error;
   }
 
   if (!document) {
+    console.error(`Server: Document with ID ${id} not found`);
     throw new Error(`Document with ID ${id} not found`);
   }
 
-  // Get document associations
-  const associations = await getDocumentAssociations(id);
+  console.log(`Server: Document found with title: ${document.title}`);
 
-  return {
-    ...document,
-    associations,
-  };
+  try {
+    // Get document associations
+    console.log(`Server: Getting associations for document ${id}`);
+    const associations = await getDocumentAssociations(id);
+    console.log(`Server: Associations retrieved successfully for document ${id}`);
+    
+    return {
+      ...document,
+      associations,
+    };
+  } catch (associationError) {
+    console.error(`Server: Error getting associations for document ${id}:`, associationError);
+    // Return the document even if associations fail
+    return document;
+  }
 }
 
 /**
@@ -258,43 +272,74 @@ export async function deleteDocument(id: string) {
  * Get all associations for a document
  */
 export async function getDocumentAssociations(documentId: string) {
-  const [propertyResults, personResults, groupResults] = await Promise.all([
-    supabase
-      .from("document_property_associations")
-      .select("document_id, property_id, properties(id, address)")
-      .eq("document_id", documentId),
+  console.log(`Server: Getting associations for document ${documentId}`);
+  
+  try {
+    const [propertyResults, personResults, groupResults] = await Promise.all([
+      supabase
+        .from("document_property_associations")
+        .select("document_id, property_id, properties(id, address)")
+        .eq("document_id", documentId),
 
-    supabase
-      .from("document_person_associations")
-      .select("document_id, person_id, people(id, name, type)")
-      .eq("document_id", documentId),
+      supabase
+        .from("document_person_associations")
+        .select("document_id, person_id, people(id, name, type)")
+        .eq("document_id", documentId),
 
-    supabase
-      .from("document_group_associations")
-      .select("document_id, group_id, groups(id, name)")
-      .eq("document_id", documentId),
-  ]);
+      supabase
+        .from("document_group_associations")
+        .select("document_id, group_id, groups(id, name)")
+        .eq("document_id", documentId),
+    ]);
 
-  // Extract properties
-  const properties = propertyResults.data
-    ? propertyResults.data.map((item) => item.properties)
-    : [];
+    // Check for errors in each query
+    if (propertyResults.error) {
+      console.error(`Server: Error fetching property associations:`, propertyResults.error);
+    }
+    
+    if (personResults.error) {
+      console.error(`Server: Error fetching person associations:`, personResults.error);
+    }
+    
+    if (groupResults.error) {
+      console.error(`Server: Error fetching group associations:`, groupResults.error);
+    }
 
-  // Extract people
-  const people = personResults.data
-    ? personResults.data.map((item) => item.people)
-    : [];
+    // Extract properties
+    const properties = propertyResults.data && !propertyResults.error
+      ? propertyResults.data.map((item) => item.properties).filter(Boolean)
+      : [];
 
-  // Extract groups
-  const groups = groupResults.data
-    ? groupResults.data.map((item) => item.groups)
-    : [];
+    // Extract people
+    const people = personResults.data && !personResults.error
+      ? personResults.data.map((item) => item.people).filter(Boolean)
+      : [];
 
-  return {
-    properties,
-    people,
-    groups,
-  };
+    // Extract groups
+    const groups = groupResults.data && !groupResults.error
+      ? groupResults.data.map((item) => item.groups).filter(Boolean)
+      : [];
+
+    console.log(`Server: Found associations for document ${documentId}:`, {
+      propertiesCount: properties.length,
+      peopleCount: people.length,
+      groupsCount: groups.length
+    });
+
+    return {
+      properties,
+      people,
+      groups,
+    };
+  } catch (error) {
+    console.error(`Server: Error in getDocumentAssociations for ${documentId}:`, error);
+    // Return empty associations on error
+    return {
+      properties: [],
+      people: [],
+      groups: []
+    };
+  }
 }
 
 /**

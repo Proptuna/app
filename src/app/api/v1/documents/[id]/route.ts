@@ -10,14 +10,18 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
+  console.log(`API: Received request for document with ID ${id}`);
 
   try {
+    console.log(`API: Calling getDocumentById for ${id}`);
     const document = await getDocumentById(id);
+    console.log(`API: Document found with title: ${document.title}`);
     return NextResponse.json(document);
   } catch (error: any) {
-    console.error(`Error fetching document ${id}:`, error);
+    console.error(`API: Error fetching document ${id}:`, error);
     
     if (error.message.includes("not found")) {
+      console.error(`API: Document with ID ${id} not found`);
       return NextResponse.json(
         { error: `Document with ID ${id} not found` },
         { status: 404 }

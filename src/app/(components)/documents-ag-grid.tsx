@@ -27,6 +27,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { deleteDocument } from "@/lib/documents-client";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { AlertCircle } from "lucide-react";
 
 // Import AG Grid styles
 import "ag-grid-community/styles/ag-grid.css";
@@ -52,6 +63,7 @@ export interface Document {
 interface DocumentsAgGridProps {
   documents: Document[];
   onDocumentDeleted?: (id: string) => void;
+  onDocumentView?: (document: Document) => void;
 }
 
 // Document type icon component
@@ -213,10 +225,18 @@ const formatDate = (params: ICellRendererParams) => {
 
 // Actions Cell Renderer
 const ActionsRenderer = (params: ICellRendererParams) => {
-  const router = useRouter();
-  
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const handleView = () => {
-    router.push(`/documents/${params.data.id}`);
+    console.log("Viewing document with ID:", params.data.id);
+    if (params.context.onDocumentView) {
+      params.context.onDocumentView(params.data);
+    } else {
+      // Fallback to direct navigation if no callback provided
+      window.location.href = `/documents/${params.data.id}`;
+    }
   };
   
   const handleDownload = () => {
@@ -238,54 +258,124 @@ const ActionsRenderer = (params: ICellRendererParams) => {
   };
   
   const handleEdit = () => {
-    router.push(`/documents/${params.data.id}/edit`);
+    window.location.href = `/documents/${params.data.id}/edit`;
   };
   
   const handleDelete = async () => {
-    if (window.confirm(`Are you sure you want to delete "${params.data.title}"?`)) {
-      try {
-        await deleteDocument(params.data.id);
-        // Refresh the grid or notify parent component about the deletion
-        if (params.context.onDocumentDeleted) {
-          params.context.onDocumentDeleted(params.data.id);
-        }
-      } catch (error) {
-        console.error("Error deleting document:", error);
-        alert("Failed to delete document. Please try again.");
+    setIsDeleting(true);
+    setDeleteError(null);
+    
+    try {
+      await deleteDocument(params.data.id);
+      // Refresh the grid or notify parent component about the deletion
+      if (params.context.onDocumentDeleted) {
+        params.context.onDocumentDeleted(params.data.id);
       }
+    } catch (error: any) {
+      console.error("Error deleting document:", error);
+      setDeleteError(error.message || "Failed to delete document");
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
     }
   };
   
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
-          <MoreHorizontalIcon className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={handleView}>
-          <EyeIcon className="mr-2 h-4 w-4" />
-          <span>View</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleDownload}>
-          <DownloadIcon className="mr-2 h-4 w-4" />
-          <span>Download</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleEdit}>
-          <PencilIcon className="mr-2 h-4 w-4" />
-          <span>Edit</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem className="text-red-600 dark:text-red-400" onClick={handleDelete}>
-          <TrashIcon className="mr-2 h-4 w-4" />
-          <span>Delete</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <MoreHorizontalIcon className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={handleView}>
+            <EyeIcon className="mr-2 h-4 w-4" />
+            <span>View</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleDownload}>
+            <DownloadIcon className="mr-2 h-4 w-4" />
+            <span>Download</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleEdit}>
+            <PencilIcon className="mr-2 h-4 w-4" />
+            <span>Edit</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem 
+            className="text-red-600 dark:text-red-400" 
+            onClick={() => setIsDeleteDialogOpen(true)}
+          >
+            <TrashIcon className="mr-2 h-4 w-4" />
+            <span>Delete</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="h-5 w-5" />
+              Confirm Document Deletion
+            </AlertDialogTitle>
+            <AlertDialogDescription className="pt-2">
+              <p className="mb-2">
+                Are you sure you want to delete the document <span className="font-semibold">"{params.data.title}"</span>?
+              </p>
+              <p className="text-gray-500">
+                This action cannot be undone and will permanently remove this document and all its associations.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteError && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm border border-red-200">
+              <p className="font-medium">Error</p>
+              <p>{deleteError}</p>
+            </div>
+          )}
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel 
+              disabled={isDeleting}
+              className="mt-0"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white focus:ring-red-600"
+            >
+              {isDeleting ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Deleting...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <TrashIcon className="h-4 w-4" />
+                  Delete Document
+                </span>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 
-export function DocumentsAgGrid({ documents, onDocumentDeleted }: DocumentsAgGridProps) {
+export function DocumentsAgGrid({ 
+  documents, 
+  onDocumentDeleted,
+  onDocumentView
+}: DocumentsAgGridProps) {
   const [gridApi, setGridApi] = useState<any>(null);
   
   const onGridReady = useCallback((params: GridReadyEvent) => {
@@ -369,8 +459,9 @@ export function DocumentsAgGrid({ documents, onDocumentDeleted }: DocumentsAgGri
   
   // Context for the grid
   const context = useMemo(() => ({
-    onDocumentDeleted
-  }), [onDocumentDeleted]);
+    onDocumentDeleted,
+    onDocumentView
+  }), [onDocumentDeleted, onDocumentView]);
 
   return (
     <div className="ag-theme-alpine dark:ag-theme-alpine-dark h-[600px] w-full">

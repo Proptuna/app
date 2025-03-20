@@ -63,14 +63,28 @@ export async function fetchDocuments(params: DocumentListParams = {}): Promise<D
  * Fetch a single document by ID
  */
 export async function fetchDocumentById(id: string): Promise<Document> {
-  const response = await fetch(`/api/v1/documents/${id}`);
+  console.log(`Client: Fetching document with ID: ${id}`);
   
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || `Failed to fetch document with ID ${id}`);
+  try {
+    const url = `/api/v1/documents/${id}`;
+    console.log(`Client: Making request to ${url}`);
+    
+    const response = await fetch(url);
+    console.log(`Client: Response status: ${response.status}`);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error(`Client: Error fetching document ${id}:`, errorData);
+      throw new Error(errorData.error || `Failed to fetch document with ID ${id} (Status: ${response.status})`);
+    }
+    
+    const document = await response.json();
+    console.log(`Client: Document fetched successfully with title: ${document.title}`);
+    return document;
+  } catch (error: any) {
+    console.error(`Client: Error in fetchDocumentById for ${id}:`, error);
+    throw error;
   }
-  
-  return response.json();
 }
 
 /**

@@ -18,8 +18,25 @@ export default function DocumentViewPage({ params }: { params: { id: string } })
       try {
         console.log("Loading document with ID:", params.id);
         setIsLoading(true);
+        
+        if (!params.id) {
+          console.error("Invalid document ID");
+          setError("Invalid document ID");
+          setIsLoading(false);
+          return;
+        }
+        
+        console.log("Making API call to fetch document...");
         const doc = await fetchDocumentById(params.id);
-        console.log("Document loaded:", doc);
+        console.log("Document loaded successfully:", JSON.stringify(doc, null, 2));
+        
+        if (!doc) {
+          console.error("Document not found");
+          setError("Document not found");
+          setIsLoading(false);
+          return;
+        }
+        
         setDocument(doc);
         setError(null);
       } catch (err: any) {
@@ -59,7 +76,18 @@ export default function DocumentViewPage({ params }: { params: { id: string } })
   return (
     <div className="container mx-auto py-8">
       <div className="mb-6 flex items-center justify-between">
-        <Button variant="outline" onClick={() => router.back()} className="flex items-center gap-2">
+        <Button 
+          variant="outline" 
+          onClick={() => {
+            // Try to use router.back() first, but if that doesn't work, navigate to documents-page
+            try {
+              router.back();
+            } catch (e) {
+              window.location.href = "/documents-page";
+            }
+          }} 
+          className="flex items-center gap-2"
+        >
           <ArrowLeft className="h-4 w-4" />
           Back to Documents
         </Button>
@@ -117,39 +145,39 @@ export default function DocumentViewPage({ params }: { params: { id: string } })
             <div className="px-6 py-4 border-t">
               <h2 className="text-lg font-semibold mb-2">Associations</h2>
               
-              {document.document_property_associations && document.document_property_associations.length > 0 && (
+              {document.associations.properties && document.associations.properties.length > 0 && (
                 <div className="mb-3">
                   <h3 className="text-sm font-medium text-gray-700">Properties:</h3>
                   <div className="flex flex-wrap gap-2 mt-1">
-                    {document.document_property_associations.map((assoc: any) => (
-                      <span key={assoc.property_id} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                        {assoc.property_id}
+                    {document.associations.properties.map((property: any, index: number) => (
+                      <span key={`property-${index}`} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                        {property.address || property.id}
                       </span>
                     ))}
                   </div>
                 </div>
               )}
               
-              {document.document_person_associations && document.document_person_associations.length > 0 && (
+              {document.associations.people && document.associations.people.length > 0 && (
                 <div className="mb-3">
                   <h3 className="text-sm font-medium text-gray-700">People:</h3>
                   <div className="flex flex-wrap gap-2 mt-1">
-                    {document.document_person_associations.map((assoc: any) => (
-                      <span key={assoc.person_id} className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                        {assoc.person_id}
+                    {document.associations.people.map((person: any, index: number) => (
+                      <span key={`person-${index}`} className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                        {person.name || person.id}
                       </span>
                     ))}
                   </div>
                 </div>
               )}
               
-              {document.document_group_associations && document.document_group_associations.length > 0 && (
+              {document.associations.groups && document.associations.groups.length > 0 && (
                 <div>
                   <h3 className="text-sm font-medium text-gray-700">Groups:</h3>
                   <div className="flex flex-wrap gap-2 mt-1">
-                    {document.document_group_associations.map((assoc: any) => (
-                      <span key={assoc.group_id} className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
-                        {assoc.group_id}
+                    {document.associations.groups.map((group: any, index: number) => (
+                      <span key={`group-${index}`} className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
+                        {group.name || group.id}
                       </span>
                     ))}
                   </div>
