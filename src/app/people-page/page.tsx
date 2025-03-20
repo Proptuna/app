@@ -1,12 +1,6 @@
-"use client"
-
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { PlusIcon, SearchIcon, MailIcon, PhoneIcon } from "lucide-react";
+import { PlusIcon, AlertCircle, CheckCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -23,125 +18,91 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { fetchPeople, createPerson, Person } from "@/lib/people-client";
+import dynamic from "next/dynamic";
 
-interface Person {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  avatar: string;
-  role: string;
-  associations: Array<{
-    type: string;
-    place: string;
-  }>;
-}
+// Dynamically import the AG Grid component
+const PeopleAgGrid = dynamic(() => import("../(components)/people-ag-grid"), {
+  ssr: false,
+});
 
 export default function PeoplePage() {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [people, setPeople] = useState<Person[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showAddPersonModal, setShowAddPersonModal] = useState(false);
-  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [newPerson, setNewPerson] = useState({
     name: "",
     email: "",
     phone: "",
+    type: "",
     role: "",
-    associationType: "",
-    associationPlace: "",
   });
 
-  const people: Person[] = [
-    {
-      id: "1",
-      name: "John Doe",
-      email: "john.doe@example.com",
-      phone: "(555) 123-4567",
-      avatar: "https://github.com/yusufhilmi.png",
-      role: "admin",
-      associations: [
-        { type: "owner", place: "Vista Ridge Group" },
-        { type: "tenant", place: "Unit 1" },
-      ],
-    },
-    {
-      id: "2",
-      name: "Jane Smith",
-      email: "jane.smith@example.com",
-      phone: "(555) 987-6543",
-      avatar: "https://github.com/furkanksl.png",
-      role: "manager",
-      associations: [{ type: "tenant", place: "935 Woodmoor" }],
-    },
-    {
-      id: "3",
-      name: "Property Management Inc.",
-      email: "contact@propmanagement.com",
-      phone: "(555) 555-5555",
-      avatar: "https://github.com/polymet-ai.png",
-      role: "leasing_agent",
-      associations: [{ type: "PM", place: "All Properties" }],
-    },
-  ];
+  // Fetch people on component mount
+  useEffect(() => {
+    const loadPeople = async () => {
+      try {
+        setLoading(true);
+        const response = await fetchPeople();
+        setPeople(response.data);
+        setError(null);
+      } catch (err: any) {
+        console.error("Error fetching people:", err);
+        setError(err.message || "Failed to load people");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const getAssociationBadgeColor = (type: string) => {
-    switch (type.toLowerCase()) {
-      case "owner":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
-      case "tenant":
-        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
-      case "pm":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400";
-    }
-  };
+    loadPeople();
+  }, []);
 
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case "admin":
-        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
-      case "manager":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
-      case "maintenance":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
-      case "leasing_agent":
-        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
-      case "support":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400";
-    }
-  };
+  // Handle person deleted
+  const handlePersonDeleted = useCallback((id: string) => {
+    setPeople((prev) => prev.filter((person) => person.id !== id));
+    setSuccessMessage("Person deleted successfully");
+    
+    // Clear success message after 3 seconds
+    setTimeout(() => {
+      setSuccessMessage(null);
+    }, 3000);
+  }, []);
 
+  // Handle person edit
+  const handlePersonEdit = useCallback((id: string) => {
+    // For now, just log the action
+    console.log(`Edit person with ID: ${id}`);
+    // In the future, this would navigate to the edit page or open an edit modal
+  }, []);
+
+  // Handle person view
+  const handlePersonView = useCallback((id: string) => {
+    // For now, just log the action
+    console.log(`View person with ID: ${id}`);
+    // In the future, this would navigate to the person detail page
+  }, []);
+
+  // Handle add person
   const handleAddPerson = () => {
     setShowAddPersonModal(true);
   };
 
-  const handleViewDetails = (person: Person) => {
-    setSelectedPerson(person);
-    // In a real app, this would navigate to a person detail page or open a modal
-    console.log("View details for person:", person);
-  };
-
+  // Handle close modal
   const handleCloseModal = () => {
     setShowAddPersonModal(false);
     setNewPerson({
       name: "",
       email: "",
       phone: "",
+      type: "",
       role: "",
-      associationType: "",
-      associationPlace: "",
     });
   };
 
-  const handleSubmitNewPerson = (e: React.FormEvent) => {
-    e.preventDefault();
-    // In a real app, this would add the person to the database
-    console.log("Adding new person:", newPerson);
-    handleCloseModal();
-  };
-
+  // Handle input change
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     field: string,
@@ -152,6 +113,7 @@ export default function PeoplePage() {
     });
   };
 
+  // Handle select change
   const handleSelectChange = (value: string, field: string) => {
     setNewPerson({
       ...newPerson,
@@ -159,24 +121,43 @@ export default function PeoplePage() {
     });
   };
 
-  const filteredPeople = people.filter(
-    (person) =>
-      person.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      person.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      person.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      person.associations.some(
-        (assoc) =>
-          assoc.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          assoc.place.toLowerCase().includes(searchQuery.toLowerCase()),
-      ),
-  );
+  // Handle submit new person
+  const handleSubmitNewPerson = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const createdPerson = await createPerson({
+        name: newPerson.name,
+        email: newPerson.email,
+        phone: newPerson.phone,
+        type: newPerson.type,
+        role: newPerson.role,
+      });
+      
+      setPeople((prev) => [...prev, createdPerson]);
+      setSuccessMessage("Person created successfully");
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 3000);
+      
+      handleCloseModal();
+    } catch (err: any) {
+      console.error("Error creating person:", err);
+      setError(err.message || "Failed to create person");
+      
+      // Clear error message after 3 seconds
+      setTimeout(() => {
+        setError(null);
+      }, 3000);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1
-          className="text-2xl font-bold text-gray-900 dark:text-white"
-        >
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           People
         </h1>
         <Button
@@ -188,126 +169,37 @@ export default function PeoplePage() {
         </Button>
       </div>
 
-      <div className="relative max-w-md">
-        <SearchIcon
-          className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500"
+      {/* Success Message */}
+      {successMessage && (
+        <Alert className="bg-green-50 text-green-800 border-green-200">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertTitle>Success</AlertTitle>
+          <AlertDescription>{successMessage}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <Alert className="bg-red-50 text-red-800 border-red-200">
+          <AlertCircle className="h-4 w-4 text-red-600" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Loading State */}
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        </div>
+      ) : (
+        <PeopleAgGrid
+          people={people}
+          onPersonDeleted={handlePersonDeleted}
+          onPersonEdit={handlePersonEdit}
+          onPersonView={handlePersonView}
         />
-
-        <Input
-          type="search"
-          placeholder="Search people..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-        />
-      </div>
-
-      <div
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-      >
-        {filteredPeople.map((person, index) => (
-          <Card
-            key={person.id}
-            className="overflow-hidden hover:shadow-md transition-shadow"
-            id={`5azfr1_${index}`}
-          >
-            <CardContent className="p-0" id={`x6ewn1_${index}`}>
-              <div className="p-6" id={`cyoww3_${index}`}>
-                <div
-                  className="flex items-center space-x-4"
-                  id={`cartsf_${index}`}
-                >
-                  <Avatar className="h-12 w-12" id={`tkltc1_${index}`}>
-                    <AvatarImage
-                      src={person.avatar}
-                      alt={person.name}
-                      id={`qefs4q_${index}`}
-                    />
-
-                    <AvatarFallback id={`a8jl4x_${index}`}>
-                      {person.name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div id={`hrvsug_${index}`}>
-                    <h3
-                      className="text-lg font-medium text-gray-900 dark:text-white"
-                      id={`n7kway_${index}`}
-                    >
-                      {person.name}
-                    </h3>
-                    <div
-                      className="flex items-center text-sm text-gray-500 dark:text-gray-400"
-                      id={`qcwlkm_${index}`}
-                    >
-                      <MailIcon
-                        className="h-4 w-4 mr-1"
-                        id={`c7q77w_${index}`}
-                      />
-
-                      {person.email}
-                    </div>
-                    <div
-                      className="flex items-center text-sm text-gray-500 dark:text-gray-400"
-                      id={`purwt7_${index}`}
-                    >
-                      <PhoneIcon
-                        className="h-4 w-4 mr-1"
-                        id={`btvtv9_${index}`}
-                      />
-
-                      {person.phone}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-3" id={`role-badge-${index}`}>
-                  <Badge
-                    className={getRoleBadgeColor(person.role)}
-                    id={`role-badge-text-${index}`}
-                  >
-                    {person.role.replace("_", " ").charAt(0).toUpperCase() +
-                      person.role.replace("_", " ").slice(1)}
-                  </Badge>
-                </div>
-
-                <div className="mt-4" id={`1sbw0q_${index}`}>
-                  <h4
-                    className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                    id={`7alojb_${index}`}
-                  >
-                    Associations
-                  </h4>
-                  <div className="flex flex-wrap gap-2" id={`c3hu9b_${index}`}>
-                    {person.associations.map((assoc, idx) => (
-                      <Badge
-                        key={idx}
-                        className={getAssociationBadgeColor(assoc.type)}
-                        id={`3rkkv9_${idx}`}
-                      >
-                        {assoc.type}: {assoc.place}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-6 py-3 flex justify-end"
-                id={`5cqh0d_${index}`}
-              >
-                <Button
-                  variant="ghost"
-                  className="text-sm text-gray-600 dark:text-gray-400"
-                  onClick={() => handleViewDetails(person)}
-                  id={`rguimj_${index}`}
-                >
-                  View Details
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      )}
 
       {/* Add Person Modal */}
       {showAddPersonModal && (
@@ -360,6 +252,32 @@ export default function PeoplePage() {
                 </div>
 
                 <div className="grid gap-2">
+                  <Label htmlFor="type">
+                    Type
+                  </Label>
+                  <Select
+                    value={newPerson.type}
+                    onValueChange={(value) => handleSelectChange(value, "type")}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="owner">
+                        Owner
+                      </SelectItem>
+                      <SelectItem value="tenant">
+                        Tenant
+                      </SelectItem>
+                      <SelectItem value="pm">
+                        Property Manager
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2">
                   <Label htmlFor="role">
                     Role
                   </Label>
@@ -389,46 +307,6 @@ export default function PeoplePage() {
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="association-type">
-                    Association Type
-                  </Label>
-                  <Select
-                    value={newPerson.associationType}
-                    onValueChange={(value) =>
-                      handleSelectChange(value, "associationType")
-                    }
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="owner">
-                        Owner
-                      </SelectItem>
-                      <SelectItem value="tenant">
-                        Tenant
-                      </SelectItem>
-                      <SelectItem value="pm">
-                        Property Manager
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="association-place">
-                    Associated With
-                  </Label>
-                  <Input
-                    value={newPerson.associationPlace}
-                    onChange={(e) => handleInputChange(e, "associationPlace")}
-                    placeholder="Property or Group name"
-                    required
-                  />
                 </div>
               </div>
 
