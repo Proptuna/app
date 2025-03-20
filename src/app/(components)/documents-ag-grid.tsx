@@ -324,18 +324,14 @@ const ActionsRenderer = (params: ICellRendererParams) => {
               Confirm Document Deletion
             </AlertDialogTitle>
             <AlertDialogDescription className="pt-2">
-              <p className="mb-2">
-                Are you sure you want to delete the document <span className="font-semibold">"{params.data.title}"</span>?
-              </p>
-              <p className="text-gray-500">
-                This action cannot be undone and will permanently remove this document and all its associations.
-              </p>
+              Are you sure you want to delete the document "{params.data.title}"?
+              This action cannot be undone and will permanently remove this document and all its associations.
             </AlertDialogDescription>
           </AlertDialogHeader>
           {deleteError && (
             <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm border border-red-200">
-              <p className="font-medium">Error</p>
-              <p>{deleteError}</p>
+              <div className="font-medium">Error</div>
+              <div>{deleteError}</div>
             </div>
           )}
           <AlertDialogFooter className="gap-2 sm:gap-0">
@@ -614,9 +610,9 @@ export default function DocumentsAgGrid({
       <div className="flex flex-col items-center justify-center h-full p-12">
         <FileIcon className="h-16 w-16 text-gray-300 mb-4" />
         <h3 className="text-xl font-medium text-gray-500">No documents found</h3>
-        <p className="text-gray-400 text-center mt-2">
+        <div className="text-gray-400 text-center mt-2">
           Try adjusting your search or filter criteria
-        </p>
+        </div>
       </div>
     );
   }, []);
@@ -625,7 +621,7 @@ export default function DocumentsAgGrid({
     return () => (
       <div className="flex flex-col items-center justify-center h-full p-12">
         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-        <p className="text-gray-500 mt-4">Loading documents...</p>
+        <div className="text-gray-500 mt-4">Loading documents...</div>
       </div>
     );
   }, []);

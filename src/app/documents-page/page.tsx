@@ -16,6 +16,7 @@ import {
   Search,
   X,
   AlertCircle,
+  CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +54,7 @@ export default function DocumentsPage() {
   const [documents, setDocuments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<any | null>(null);
   const [isViewingDocument, setIsViewingDocument] = useState(false);
   
@@ -108,11 +110,9 @@ export default function DocumentsPage() {
     setDocuments(prevDocuments => prevDocuments.filter(doc => doc.id !== id));
     
     // Show a temporary success message
-    setError("Document successfully deleted.");
+    setSuccessMessage("Document successfully deleted.");
     setTimeout(() => {
-      if (error === "Document successfully deleted.") {
-        setError(null);
-      }
+      setSuccessMessage(null);
     }, 3000);
   };
 
@@ -338,14 +338,24 @@ export default function DocumentsPage() {
               </div>
             </div>
           ) : (
-            <div className="overflow-hidden border rounded-lg">
-              <DocumentsAgGrid 
-                documents={documents} 
-                onDocumentDeleted={handleDocumentDeleted}
-                onDocumentView={handleViewDocument}
-                isLoading={isLoading}
-              />
-            </div>
+            <>
+              {successMessage && (
+                <div className="border border-green-200 bg-green-50 rounded-lg p-4 mb-4">
+                  <div className="flex items-center gap-2 text-green-600">
+                    <CheckCircle className="h-5 w-5" />
+                    <p>{successMessage}</p>
+                  </div>
+                </div>
+              )}
+              <div className="overflow-hidden border rounded-lg">
+                <DocumentsAgGrid 
+                  documents={documents} 
+                  onDocumentDeleted={handleDocumentDeleted}
+                  onDocumentView={handleViewDocument}
+                  isLoading={isLoading}
+                />
+              </div>
+            </>
           )}
         </div>
       )}

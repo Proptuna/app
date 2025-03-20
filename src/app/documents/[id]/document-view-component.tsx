@@ -207,18 +207,14 @@ export default function DocumentViewComponent({ document, onClose, onDelete }: D
               Confirm Document Deletion
             </AlertDialogTitle>
             <AlertDialogDescription className="pt-2">
-              <p className="mb-2">
-                Are you sure you want to delete the document <span className="font-semibold">"{document?.title}"</span>?
-              </p>
-              <p className="text-gray-500">
-                This action cannot be undone and will permanently remove this document and all its associations.
-              </p>
+              Are you sure you want to delete the document "{document?.title}"?
+              This action cannot be undone and will permanently remove this document and all its associations.
             </AlertDialogDescription>
           </AlertDialogHeader>
           {deleteError && (
             <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm border border-red-200">
-              <p className="font-medium">Error</p>
-              <p>{deleteError}</p>
+              <div className="font-medium">Error</div>
+              <div>{deleteError}</div>
             </div>
           )}
           <AlertDialogFooter className="gap-2 sm:gap-0">
