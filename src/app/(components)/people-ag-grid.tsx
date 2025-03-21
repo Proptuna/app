@@ -1,3 +1,5 @@
+"use client"
+
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { ColDef, GridReadyEvent, ICellRendererParams } from "ag-grid-community";
@@ -12,6 +14,7 @@ import {
   TrashIcon,
   Search,
   X,
+  EyeIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -143,37 +146,44 @@ const ActionsCellRenderer = (props: ICellRendererParams) => {
   const { onEdit, onDelete, onView } = context;
   
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
-          <span className="sr-only">Open menu</span>
-          <MoreHorizontalIcon className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => onView(data.id)}>
-          <UserIcon className="mr-2 h-4 w-4" />
-          <span>View Details</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onEdit(data.id)}>
-          <PencilIcon className="mr-2 h-4 w-4" />
-          <span>Edit</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onDelete(data.id)}>
-          <TrashIcon className="mr-2 h-4 w-4" />
-          <span>Delete</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="flex justify-center">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => onView(data.id)}
+        className="h-8 w-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+        title="View details"
+      >
+        <EyeIcon className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <span className="sr-only">Open menu</span>
+            <MoreHorizontalIcon className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => onEdit(data.id)}>
+            <PencilIcon className="mr-2 h-4 w-4" />
+            <span>Edit</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onDelete(data.id)}>
+            <TrashIcon className="mr-2 h-4 w-4" />
+            <span>Delete</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 };
 
 // Name cell renderer with icon
 const NameCellRenderer = (props: ICellRendererParams) => {
   return (
-    <div className="flex items-center">
-      <UserIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400 mr-2" />
-      <span>{props.value}</span>
+    <div className="flex items-center py-1.5">
+      <UserIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400 mr-2.5 flex-shrink-0" />
+      <span className="font-medium text-gray-900 dark:text-gray-100">{props.value}</span>
     </div>
   );
 };
@@ -269,7 +279,9 @@ export default function PeopleAgGrid({
         filter: true,
         flex: 1,
         minWidth: 150,
-        cellRenderer: NameCellRenderer
+        cellRenderer: NameCellRenderer,
+        headerClass: 'ag-header-cell-padded',
+        cellClass: 'ag-cell-padded',
       },
       {
         headerName: "Contact",
@@ -278,6 +290,8 @@ export default function PeopleAgGrid({
         flex: 1,
         minWidth: 180,
         valueGetter: (params) => params.data,
+        headerClass: 'ag-header-cell-padded',
+        cellClass: 'ag-cell-padded',
       },
       {
         headerName: "Type",
@@ -286,6 +300,8 @@ export default function PeopleAgGrid({
         sortable: true,
         filter: true,
         width: 120,
+        headerClass: 'ag-header-cell-padded',
+        cellClass: 'ag-cell-padded',
       },
       {
         headerName: "Role",
@@ -294,6 +310,8 @@ export default function PeopleAgGrid({
         sortable: true,
         filter: true,
         width: 140,
+        headerClass: 'ag-header-cell-padded',
+        cellClass: 'ag-cell-padded',
       },
       {
         headerName: "Associations",
@@ -301,15 +319,19 @@ export default function PeopleAgGrid({
         cellRenderer: AssociationsCellRenderer,
         flex: 1,
         minWidth: 150,
+        headerClass: 'ag-header-cell-padded',
+        cellClass: 'ag-cell-padded',
       },
       {
-        headerName: "Actions",
+        headerName: "",
         field: "actions",
         cellRenderer: ActionsCellRenderer,
         width: 100,
         sortable: false,
         filter: false,
         pinned: "right",
+        headerClass: 'ag-header-cell-padded',
+        cellClass: 'ag-cell-padded',
       },
     ],
     []
@@ -420,15 +442,15 @@ export default function PeopleAgGrid({
   );
 
   return (
-    <div className="ag-theme-alpine dark:ag-theme-alpine-dark w-full rounded-md overflow-hidden">
-      <div className="p-4 border-b flex items-center">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
             placeholder="Search people..."
             value={filterText}
             onChange={onFilterTextChange}
-            className="pl-10"
+            className="pl-10 border-gray-200 dark:border-gray-700 focus:ring-blue-500 focus:border-blue-500"
           />
           {filterText && (
             <button
@@ -441,14 +463,15 @@ export default function PeopleAgGrid({
         </div>
       </div>
 
-      <div className="h-[550px]">
+      <div className="h-[550px] ag-theme-custom">
         <style jsx global>{`
-          .ag-theme-alpine {
+          .ag-theme-custom {
             --ag-header-height: 50px;
             --ag-header-foreground-color: #374151;
-            --ag-header-background-color: #f9fafb;
-            --ag-header-cell-hover-background-color: #f3f4f6;
+            --ag-header-background-color: #ffffff;
+            --ag-header-cell-hover-background-color: #f9fafb;
             --ag-header-cell-moving-background-color: #f3f4f6;
+            --ag-background-color: #ffffff;
             --ag-row-hover-color: #f9fafb;
             --ag-selected-row-background-color: rgba(79, 70, 229, 0.1);
             --ag-font-size: 14px;
@@ -456,44 +479,89 @@ export default function PeopleAgGrid({
             --ag-grid-size: 6px;
             --ag-list-item-height: 30px;
             --ag-cell-horizontal-padding: 12px;
-            --ag-borders: solid 1px;
-            --ag-border-color: #e5e7eb;
+            --ag-borders: none;
+            --ag-border-color: transparent;
             --ag-secondary-border-color: #e5e7eb;
             --ag-row-border-color: #f3f4f6;
-            --ag-cell-horizontal-border: solid 1px var(--ag-border-color);
+            --ag-cell-horizontal-border: none;
             --ag-range-selection-border-color: rgba(79, 70, 229, 0.5);
             --ag-range-selection-background-color: rgba(79, 70, 229, 0.1);
+            --ag-icon-color: #6b7280;
+            --ag-icon-size: 16px;
+            --ag-icon-font-family: agGridAlpine;
           }
           
-          .ag-theme-alpine-dark {
+          .dark .ag-theme-custom {
             --ag-header-foreground-color: #e5e7eb;
             --ag-header-background-color: #1f2937;
             --ag-header-cell-hover-background-color: #374151;
             --ag-header-cell-moving-background-color: #374151;
-            --ag-background-color: #111827;
+            --ag-background-color: #1f2937;
             --ag-foreground-color: #e5e7eb;
-            --ag-row-hover-color: #1f2937;
+            --ag-row-hover-color: #111827;
             --ag-selected-row-background-color: rgba(79, 70, 229, 0.2);
-            --ag-border-color: #374151;
+            --ag-border-color: transparent;
             --ag-secondary-border-color: #374151;
-            --ag-row-border-color: #1f2937;
+            --ag-row-border-color: #374151;
+            --ag-icon-color: #9ca3af;
           }
           
-          .ag-theme-alpine .ag-header,
-          .ag-theme-alpine-dark .ag-header {
+          .ag-theme-custom .ag-header {
             font-weight: 600;
+            border-bottom: 1px solid var(--ag-secondary-border-color);
           }
           
-          .ag-theme-alpine .ag-row,
-          .ag-theme-alpine-dark .ag-row {
+          .ag-theme-custom .ag-row {
             border-bottom-style: solid;
             border-bottom-width: 1px;
             border-bottom-color: var(--ag-row-border-color);
           }
           
-          .ag-theme-alpine .ag-row-hover,
-          .ag-theme-alpine-dark .ag-row-hover {
+          .ag-theme-custom .ag-row-hover {
             background-color: var(--ag-row-hover-color);
+          }
+          
+          .ag-theme-custom .ag-header-cell-padded,
+          .ag-theme-custom .ag-cell-padded {
+            padding-left: 16px;
+            padding-right: 16px;
+          }
+          
+          .ag-theme-custom .ag-cell {
+            display: flex;
+            align-items: center;
+          }
+          
+          .ag-theme-custom .ag-paging-panel {
+            color: var(--ag-foreground-color);
+            height: 48px;
+            padding: 0 16px;
+            border-top: 1px solid var(--ag-secondary-border-color);
+          }
+          
+          .ag-theme-custom .ag-paging-button {
+            cursor: pointer;
+            padding: 6px;
+            margin: 0 2px;
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+          }
+          
+          .ag-theme-custom .ag-paging-button:hover:not(.ag-disabled) {
+            background-color: #f3f4f6;
+          }
+          
+          .dark .ag-theme-custom .ag-paging-button:hover:not(.ag-disabled) {
+            background-color: #374151;
+          }
+          
+          .ag-theme-custom .ag-paging-button.ag-disabled {
+            opacity: 0.5;
+            cursor: default;
+          }
+          
+          .ag-theme-custom .ag-paging-description {
+            font-size: 14px;
           }
         `}</style>
         <AgGridReact
@@ -501,19 +569,25 @@ export default function PeopleAgGrid({
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
           onGridReady={onGridReady}
-          rowSelection="multiple"
           context={context}
-          pagination={true}
-          paginationPageSize={10}
-          paginationAutoPageSize={false}
-          domLayout="normal"
+          suppressRowClickSelection={true}
           animateRows={true}
           noRowsOverlayComponent={NoRowsOverlayComponent}
           loadingOverlayComponent={LoadingOverlayComponent}
-          rowHeight={60}
+          rowHeight={70}
+          headerHeight={56}
+          groupDefaultExpanded={1}
           suppressCellFocus={true}
           enableCellTextSelection={true}
-          suppressRowClickSelection={true}
+          pagination={true}
+          paginationPageSize={10}
+          suppressPaginationPanel={false}
+          domLayout="normal"
+          suppressMovableColumns={true}
+          suppressColumnVirtualisation={true}
+          suppressRowVirtualisation={false}
+          suppressHorizontalScroll={true}
+          className={`${typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : ''}`}
         />
       </div>
 

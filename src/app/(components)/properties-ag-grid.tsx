@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { 
   ColDef, 
@@ -12,19 +12,20 @@ import {
   IFilterComp
 } from "ag-grid-community";
 import {
-  HomeIcon,
-  BuildingIcon,
-  UserIcon,
-  FileTextIcon,
-  ShieldIcon,
-  MoreHorizontalIcon,
-  PencilIcon,
-  TrashIcon,
-  PlusIcon,
+  Home as HomeIcon,
+  Building as BuildingIcon,
+  User as UserIcon,
+  File as FileIcon,
+  Shield as ShieldIcon,
+  MoreHorizontal as MoreHorizontalIcon,
+  Pencil as PencilIcon,
+  Trash as TrashIcon,
+  Plus as PlusIcon,
   Search,
   X,
-  ChevronDownIcon,
-  ChevronRightIcon,
+  ChevronDown as ChevronDownIcon,
+  ChevronRight as ChevronRightIcon,
+  Eye as EyeIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -59,6 +60,7 @@ interface Property {
   tenants: string[];
   docs: string[];
   escalationPolicy: string;
+  image?: string; // Added image property
 }
 
 interface PropertiesAgGridProps {
@@ -70,28 +72,28 @@ interface PropertiesAgGridProps {
 
 // Tag cell renderer with chip styling
 const TagCellRenderer = (props: ICellRendererParams) => {
-  const value = props.value;
+  const { value } = props;
   
-  if (!value || value === "—") return null;
+  if (!value) return null;
+  
+  // Get color based on tag
+  const getTagColor = (tag: string) => {
+    switch (tag.toLowerCase()) {
+      case 'residential':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+      case 'commercial':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+      case 'vacation':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
+      case 'office':
+        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+    }
+  };
   
   return (
-    <Badge 
-      className="bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400 cursor-pointer"
-      onClick={() => {
-        // If we have access to the grid API, we can filter by this tag
-        if (props.api) {
-          const filterInstance = props.api.getFilterInstance('tag');
-          if (filterInstance) {
-            // Type assertion after null check
-            (filterInstance as any).setModel({
-              type: 'equals',
-              filter: value
-            });
-            props.api.onFilterChanged();
-          }
-        }
-      }}
-    >
+    <Badge className={getTagColor(value)}>
       {value}
     </Badge>
   );
@@ -127,122 +129,141 @@ const PropertyTypeBadgeRenderer = (props: ICellRendererParams) => {
   );
 };
 
-// Tenants cell renderer
-const TenantsCellRenderer = (props: ICellRendererParams) => {
-  const tenants = props.value;
+// Type cell renderer
+const TypeCellRenderer = (props: ICellRendererParams) => {
+  const { value } = props;
   
-  if (!tenants || tenants.length === 0) return null;
+  if (!value) return null;
+  
+  // Get color based on type
+  const getTypeColor = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'single family':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+      case 'multi family':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
+      case 'condo':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+      case 'commercial':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+    }
+  };
   
   return (
-    <div className="flex flex-wrap gap-1">
-      {tenants.map((tenant: string, index: number) => (
-        <Badge
-          key={index}
-          variant="outline"
-          className="flex items-center text-xs bg-gray-100 dark:bg-gray-700"
+    <Badge className={getTypeColor(value)}>
+      {value}
+    </Badge>
+  );
+};
+
+// Tenants cell renderer
+const TenantsCellRenderer = (props: ICellRendererParams) => {
+  const tenants = props.value as string[];
+  const { data, context } = props;
+  
+  return (
+    <div className="flex w-full h-full">
+      {/* Left column with centered plus button - fixed width */}
+      <div className="w-10 flex items-center justify-center">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            // Add tenant logic here
+          }}
         >
-          <UserIcon className="h-3 w-3 mr-1" />
-          {tenant}
-        </Badge>
-      ))}
+          <PlusIcon className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      {/* Right column with tenants list */}
+      <div className="flex-1 flex flex-col justify-center">
+        {tenants && tenants.length > 0 ? (
+          tenants.map((tenant, index) => (
+            <div key={index} className="flex items-center mb-0.5 last:mb-0">
+              <UserIcon className="h-4 w-4 text-gray-400 mr-1" />
+              <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{tenant}</span>
+            </div>
+          ))
+        ) : (
+          <span className="text-gray-400 dark:text-gray-500 text-sm">No tenants</span>
+        )}
+      </div>
     </div>
   );
 };
 
 // Docs cell renderer
 const DocsCellRenderer = (props: ICellRendererParams) => {
-  const { value, data, context } = props;
-  
-  if (!value || !Array.isArray(value) || value.length === 0) {
-    return (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-6 w-6 p-0 rounded-full"
-        onClick={() => context?.onAddDoc(data.id)}
-      >
-        <PlusIcon className="h-4 w-4" />
-      </Button>
-    );
-  }
+  const docs = props.value as string[];
+  const { data, context } = props;
   
   return (
-    <div className="flex flex-wrap gap-1 items-center">
-      {value.map((doc: string, index: number) => (
-        <Badge
-          key={index}
-          variant="outline"
-          className="bg-gray-100 dark:bg-gray-700"
+    <div className="flex w-full h-full">
+      {/* Left column with centered plus button - fixed width */}
+      <div className="w-10 flex items-center justify-center">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (context?.onAddDoc) {
+              context.onAddDoc(data.id);
+            }
+          }}
         >
-          <FileTextIcon className="h-3 w-3 mr-1" />
-          {doc}
-        </Badge>
-      ))}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-6 w-6 p-0 rounded-full"
-        onClick={() => context?.onAddDoc(data.id)}
-      >
-        <PlusIcon className="h-4 w-4" />
-      </Button>
+          <PlusIcon className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      {/* Right column with docs list */}
+      <div className="flex-1 flex flex-col justify-center">
+        {docs && docs.length > 0 ? (
+          docs.map((doc, index) => (
+            <div key={index} className="flex items-center mb-0.5 last:mb-0">
+              <FileIcon className="h-4 w-4 text-gray-400 mr-1" />
+              <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{doc}</span>
+            </div>
+          ))
+        ) : (
+          <span className="text-gray-400 dark:text-gray-500 text-sm">No documents</span>
+        )}
+      </div>
     </div>
   );
 };
 
-// Escalation policy cell renderer
-const EscalationPolicyCellRenderer = (props: ICellRendererParams) => {
+// Address cell renderer
+const AddressCellRenderer = (props: ICellRendererParams) => {
   const { value, data, context } = props;
   
-  if (!value) {
-    return (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-6 w-6 p-0 rounded-full"
-        onClick={() => context?.onAddEscalationPolicy(data.id)}
-      >
-        <PlusIcon className="h-4 w-4" />
-      </Button>
-    );
-  }
+  if (!data || !context) return null;
   
   return (
-    <div className="flex items-center">
-      <Badge
-        className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 mr-2"
-      >
-        <ShieldIcon className="h-3 w-3 mr-1" />
-        {value}
-      </Badge>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-6 w-6 p-0 rounded-full"
-        onClick={() => context?.onAddEscalationPolicy(data.id)}
-      >
-        <PlusIcon className="h-4 w-4" />
-      </Button>
-    </div>
-  );
-};
-
-// Address cell renderer with icon
-const AddressCellRenderer = (props: ICellRendererParams) => {
-  const { value, data } = props;
-  
-  // Use different icon based on property type
-  const getIcon = () => {
-    if (data.type === "multi-family") {
-      return <BuildingIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400 mr-2" />;
-    }
-    return <HomeIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400 mr-2" />;
-  };
-  
-  return (
-    <div className="flex items-center">
-      {getIcon()}
-      <span>{value}</span>
+    <div 
+      className="flex items-center cursor-pointer"
+      onClick={() => context.onPropertyClick(data)}
+    >
+      <div className="w-10 h-10 rounded-md overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-700 flex items-center justify-center mr-3">
+        {data.image ? (
+          <img 
+            src={data.image} 
+            alt={value} 
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.currentTarget.src = "https://via.placeholder.com/40x40?text=P";
+            }}
+          />
+        ) : (
+          <HomeIcon className="h-5 w-5 text-gray-400" />
+        )}
+      </div>
+      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{value}</span>
     </div>
   );
 };
@@ -253,46 +274,34 @@ const ActionsCellRenderer = (props: ICellRendererParams) => {
   
   if (!data || !context) return null;
   
-  const { onPropertyClick, onAddDoc, onAddEscalationPolicy } = context;
-  
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
-          <span className="sr-only">Open menu</span>
-          <MoreHorizontalIcon className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => onPropertyClick(data)}>
-          <HomeIcon className="mr-2 h-4 w-4" />
-          <span>View Details</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAddDoc(data.id)}>
-          <FileTextIcon className="mr-2 h-4 w-4" />
-          <span>Add Document</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAddEscalationPolicy(data.id)}>
-          <ShieldIcon className="mr-2 h-4 w-4" />
-          <span>Set Escalation Policy</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="flex justify-end">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-8 w-8 p-0"
+        onClick={(e) => {
+          e.stopPropagation();
+          context.onPropertyClick(data);
+        }}
+      >
+        <EyeIcon className="h-4 w-4" />
+      </Button>
+    </div>
   );
 };
 
 // No rows overlay component
 const NoRowsOverlayComponent = () => {
   return (
-    <div className="flex flex-col items-center justify-center h-64 p-4">
-      <div className="text-gray-400 mb-2">
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
-          <path d="M13 2v7h7"></path>
-        </svg>
+    <div className="flex flex-col items-center justify-center h-[400px] p-4">
+      <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-3 mb-4">
+        <HomeIcon className="h-6 w-6 text-gray-400" />
       </div>
-      <p className="text-gray-500 text-center">No properties found</p>
-      <p className="text-gray-400 text-sm text-center mt-1">Add a new property to get started</p>
+      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">No properties found</h3>
+      <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-md">
+        Try adjusting your search or filter to find what you're looking for, or add a new property.
+      </p>
     </div>
   );
 };
@@ -300,9 +309,8 @@ const NoRowsOverlayComponent = () => {
 // Loading overlay component
 const LoadingOverlayComponent = () => {
   return (
-    <div className="flex items-center justify-center h-64">
-      <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-      <p className="ml-4 text-gray-600 dark:text-gray-400">Loading properties...</p>
+    <div className="flex items-center justify-center h-[400px]">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
     </div>
   );
 };
@@ -443,81 +451,72 @@ export default function PropertiesAgGrid({
       headerName: "Address",
       field: "address",
       cellRenderer: AddressCellRenderer,
-      sortable: true,
-      filter: true,
       flex: 2,
       minWidth: 200,
-      filterParams: {
-        filterOptions: ['contains', 'startsWith', 'endsWith'],
-        defaultOption: 'contains'
-      }
+      sortable: true,
+      filter: true,
+      resizable: true,
+      headerCheckboxSelection: false,
+      headerClass: 'custom-header-cell',
     },
     {
       headerName: "Tag",
       field: "tag",
       cellRenderer: TagCellRenderer,
-      rowGroup: false, // Don't group by default, let user choose
-      hide: false, // Make sure column is visible
+      flex: 1,
+      minWidth: 120,
       sortable: true,
       filter: true,
-      enableRowGroup: true, // Enable row grouping for this column
-      width: 150,
-      filterParams: {
-        filterOptions: ['equals'],
-        defaultOption: 'equals'
-      }
+      resizable: true,
+      headerClass: 'custom-header-cell',
     },
     {
       headerName: "Type",
       field: "type",
-      cellRenderer: PropertyTypeBadgeRenderer,
+      cellRenderer: TypeCellRenderer,
+      flex: 1,
+      minWidth: 120,
       sortable: true,
       filter: true,
-      enableRowGroup: true, // Enable row grouping for this column
-      width: 150,
-      filterParams: {
-        filterOptions: ['equals'],
-        defaultOption: 'equals'
-      }
+      resizable: true,
+      headerClass: 'custom-header-cell',
     },
     {
       headerName: "Tenants",
       field: "tenants",
       cellRenderer: TenantsCellRenderer,
-      sortable: false,
-      filter: false,
       flex: 1.5,
       minWidth: 180,
+      sortable: false,
+      filter: false,
+      resizable: true,
+      headerClass: 'custom-header-cell',
+      wrapText: true,
+      autoHeight: false,
     },
     {
       headerName: "Docs",
       field: "docs",
       cellRenderer: DocsCellRenderer,
+      flex: 1.5,
+      minWidth: 180,
       sortable: false,
       filter: false,
-      flex: 1,
-      minWidth: 150,
+      resizable: true,
+      headerClass: 'custom-header-cell',
+      wrapText: true,
+      autoHeight: false,
     },
     {
-      headerName: "Escalation Policy",
-      field: "escalationPolicy",
-      cellRenderer: EscalationPolicyCellRenderer,
-      sortable: true,
-      filter: true,
-      width: 180,
-      filterParams: {
-        filterOptions: ['equals'],
-        defaultOption: 'equals'
-      }
-    },
-    {
-      headerName: "Actions",
+      headerName: "",
       field: "actions",
       cellRenderer: ActionsCellRenderer,
+      flex: 0.5,
+      minWidth: 70,
       sortable: false,
       filter: false,
-      width: 100,
-      pinned: "right",
+      resizable: false,
+      headerClass: 'custom-header-cell',
     },
   ], []);
   
@@ -556,8 +555,8 @@ export default function PropertiesAgGrid({
   }), [onPropertyClick, onAddDoc, onAddEscalationPolicy]);
 
   return (
-    <div className="ag-theme-alpine dark:ag-theme-alpine-dark w-full rounded-md overflow-hidden shadow-sm">
-      <div className="p-4 border-b flex items-center">
+    <div className="ag-theme-custom w-full rounded-lg overflow-hidden shadow-sm bg-white dark:bg-gray-800 border-0">
+      <div className="p-4 border-b-0 flex items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
@@ -576,98 +575,210 @@ export default function PropertiesAgGrid({
           )}
         </div>
       </div>
-      
-      <div className="h-[550px]">
+      <div className="h-[600px]">
         <style jsx global>{`
-          .ag-theme-alpine {
-            --ag-header-height: 50px;
-            --ag-header-foreground-color: #374151;
-            --ag-header-background-color: #f9fafb;
-            --ag-header-cell-hover-background-color: #f3f4f6;
-            --ag-header-cell-moving-background-color: #f3f4f6;
-            --ag-row-hover-color: #f9fafb;
-            --ag-selected-row-background-color: rgba(79, 70, 229, 0.1);
+          .ag-theme-custom {
             --ag-font-size: 14px;
             --ag-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            --ag-grid-size: 6px;
-            --ag-list-item-height: 30px;
-            --ag-cell-horizontal-padding: 12px;
-            --ag-borders: solid 1px;
-            --ag-border-color: #e5e7eb;
-            --ag-secondary-border-color: #e5e7eb;
+            
+            --ag-header-height: 56px;
+            --ag-header-foreground-color: #374151;
+            --ag-header-background-color: #ffffff;
+            --ag-header-cell-hover-background-color: #f9fafb;
+            --ag-header-cell-moving-background-color: #f3f4f6;
+            
+            --ag-background-color: #ffffff;
+            --ag-foreground-color: #374151;
+            
+            --ag-border-color: #f3f4f6;
             --ag-row-border-color: #f3f4f6;
-            --ag-cell-horizontal-border: solid 1px var(--ag-border-color);
-            --ag-range-selection-border-color: rgba(79, 70, 229, 0.5);
-            --ag-range-selection-background-color: rgba(79, 70, 229, 0.1);
-            border-radius: 0.5rem;
+            
+            --ag-row-hover-color: #f9fafb;
+            --ag-selected-row-background-color: #f9fafb;
+            
+            --ag-odd-row-background-color: #ffffff;
+            --ag-control-panel-background-color: #ffffff;
+            
+            --ag-invalid-color: #ef4444;
+            --ag-range-selection-border-color: #3b82f6;
+            --ag-range-selection-background-color: rgba(59, 130, 246, 0.1);
+            
+            --ag-cell-horizontal-padding: 16px;
+            --ag-cell-vertical-padding: 8px;
+            --ag-row-height: 70px;
+            --ag-borders: none;
+            --ag-borders-side-panel: none;
+            --ag-borders-cell: none;
+            --ag-borders-critical: none;
+            --ag-icon-color: #6b7280;
+            --ag-icon-size: 16px;
+            --ag-icon-font-family: agGridAlpine;
           }
           
-          .ag-theme-alpine-dark {
+          .dark .ag-theme-custom {
             --ag-header-foreground-color: #e5e7eb;
             --ag-header-background-color: #1f2937;
             --ag-header-cell-hover-background-color: #374151;
             --ag-header-cell-moving-background-color: #374151;
-            --ag-background-color: #111827;
+            
+            --ag-background-color: #1f2937;
             --ag-foreground-color: #e5e7eb;
-            --ag-row-hover-color: #1f2937;
-            --ag-selected-row-background-color: rgba(79, 70, 229, 0.2);
-            --ag-border-color: #374151;
-            --ag-secondary-border-color: #374151;
-            --ag-row-border-color: #1f2937;
-            border-radius: 0.5rem;
+            
+            --ag-border-color: transparent;
+            --ag-row-border-color: #374151;
+            
+            --ag-row-hover-color: #374151;
+            --ag-selected-row-background-color: #374151;
+            
+            --ag-odd-row-background-color: #1f2937;
+            --ag-control-panel-background-color: #1f2937;
           }
           
-          .ag-theme-alpine .ag-header,
-          .ag-theme-alpine-dark .ag-header {
+          .ag-theme-custom .ag-header {
+            border-top: 1px solid #e5e7eb;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          
+          .dark .ag-theme-custom .ag-header {
+            border-top: 1px solid #374151;
+            border-bottom: 1px solid #374151;
+          }
+          
+          .ag-theme-custom .ag-header-cell {
             font-weight: 600;
-            border-bottom: 1px solid var(--ag-border-color);
           }
           
-          .ag-theme-alpine .ag-row,
-          .ag-theme-alpine-dark .ag-row {
-            border-bottom-style: solid;
-            border-bottom-width: 1px;
-            border-bottom-color: var(--ag-row-border-color);
+          .ag-theme-custom .ag-cell {
+            display: flex;
+            align-items: center;
           }
           
-          .ag-theme-alpine .ag-row-hover,
-          .ag-theme-alpine-dark .ag-row-hover {
-            background-color: var(--ag-row-hover-color);
+          .ag-theme-custom .ag-row {
+            border-bottom: 1px solid #f3f4f6;
+            transition: background-color 0.2s ease;
           }
           
-          .ag-theme-alpine .ag-row-group,
-          .ag-theme-alpine-dark .ag-row-group {
-            background-color: var(--ag-header-background-color);
-            font-weight: 600;
+          .dark .ag-theme-custom .ag-row {
+            border-bottom: 1px solid #374151;
+          }
+          
+          .ag-theme-custom .ag-row-hover {
+            background-color: #f9fafb;
+          }
+          
+          .dark .ag-theme-custom .ag-row-hover {
+            background-color: #374151;
+          }
+          
+          /* Fix for sort icons */
+          .ag-theme-custom .ag-header-cell-label {
+            display: flex;
+            align-items: center;
+          }
+          
+          .ag-theme-custom .ag-header-cell-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          
+          .ag-theme-custom .custom-header-cell .ag-header-icon {
+            display: none;
+          }
+          
+          .ag-theme-custom .custom-header-cell.ag-header-cell-sorted-asc::after,
+          .ag-theme-custom .custom-header-cell.ag-header-cell-sorted-desc::after {
+            content: '';
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 12px;
+            height: 12px;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+          }
+          
+          .ag-theme-custom .custom-header-cell.ag-header-cell-sorted-asc::after {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23374151' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m18 15-6-6-6 6'/%3E%3C/svg%3E");
+          }
+          
+          .ag-theme-custom .custom-header-cell.ag-header-cell-sorted-desc::after {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23374151' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+          }
+          
+          .dark .ag-theme-custom .custom-header-cell.ag-header-cell-sorted-asc::after {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23e5e7eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m18 15-6-6-6 6'/%3E%3C/svg%3E");
+          }
+          
+          .dark .ag-theme-custom .custom-header-cell.ag-header-cell-sorted-desc::after {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23e5e7eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+          }
+          
+          /* Pagination styling */
+          .ag-theme-custom .ag-paging-panel {
+            height: 50px;
+            border-top: 1px solid #f3f4f6;
+            color: #4b5563;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+          }
+          
+          .dark .ag-theme-custom .ag-paging-panel {
+            border-top: 1px solid #374151;
+            color: #e5e7eb;
+          }
+          
+          .ag-theme-custom .ag-paging-button {
+            cursor: pointer;
+            padding: 6px;
+            margin: 0 2px;
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+          }
+          
+          .ag-theme-custom .ag-paging-button:hover:not(.ag-disabled) {
+            background-color: #f3f4f6;
+          }
+          
+          .dark .ag-theme-custom .ag-paging-button:hover:not(.ag-disabled) {
+            background-color: #374151;
+          }
+          
+          .ag-theme-custom .ag-paging-button.ag-disabled {
+            opacity: 0.5;
+            cursor: default;
+          }
+          
+          .ag-theme-custom .ag-paging-description {
+            font-size: 14px;
           }
         `}</style>
         <AgGridReact
           rowData={filteredProperties}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
-          autoGroupColumnDef={autoGroupColumnDef}
           onGridReady={onGridReady}
-          rowSelection="single"
           context={context}
-          pagination={true}
-          paginationPageSize={10}
-          paginationAutoPageSize={false}
-          domLayout="normal"
+          suppressRowClickSelection={true}
           animateRows={true}
           noRowsOverlayComponent={NoRowsOverlayComponent}
           loadingOverlayComponent={LoadingOverlayComponent}
-          rowHeight={60}
+          rowHeight={70}
           groupDefaultExpanded={1}
           suppressCellFocus={true}
           enableCellTextSelection={true}
-          suppressRowClickSelection={true}
-          groupDisplayType="groupRows"
-          groupRemoveSingleChildren={false}
-          groupRemoveLowestSingleChildren={false}
-          groupMaintainOrder={true}
-          groupIncludeFooter={false}
-          rowGroupPanelShow="always"
-          suppressDragLeaveHidesColumns={true}
+          pagination={true}
+          paginationPageSize={10}
+          suppressPaginationPanel={false}
+          domLayout="normal"
+          suppressMovableColumns={true}
+          suppressColumnVirtualisation={true}
+          suppressRowVirtualisation={false}
+          suppressHorizontalScroll={true}
         />
       </div>
     </div>

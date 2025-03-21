@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, CheckCircle, AlertCircle } from "lucide-react";
 import { Property } from "@/types/property";
 import PropertiesAgGrid from "@/app/(components)/properties-ag-grid";
+import { PropertyDetailV2 } from "@/app/(components)/property-detail-v2";
 import { AddPropertyModal } from "@/app/(components)/add-property-modal";
 import { AddDocModal } from "@/app/(components)/add-doc-modal";
 import { AddEscalationPolicyModal } from "@/app/(components)/add-escalation-policy-modal";
@@ -17,6 +18,7 @@ export default function PropertiesPage() {
   const [isAddDocumentModalOpen, setIsAddDocumentModalOpen] = useState(false);
   const [isAddEscalationPolicyModalOpen, setIsAddEscalationPolicyModalOpen] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [showPropertyDetail, setShowPropertyDetail] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -64,8 +66,38 @@ export default function PropertiesPage() {
           updatedAt: "2023-02-20T00:00:00Z"
         }
       ],
+      jobs: [
+        {
+          id: "job-1",
+          title: "Fix leaking faucet",
+          description: "The kitchen faucet is leaking and needs repair.",
+          status: "pending",
+          priority: "medium",
+          createdAt: "2023-03-10T00:00:00Z"
+        },
+        {
+          id: "job-2",
+          title: "Replace smoke detector",
+          description: "Smoke detector in hallway needs replacement.",
+          status: "completed",
+          priority: "high",
+          createdAt: "2023-02-15T00:00:00Z",
+          completedAt: "2023-02-20T00:00:00Z"
+        }
+      ],
+      aiConversations: [
+        {
+          id: "conv-1",
+          title: "Rent increase discussion",
+          description: "AI conversation about potential rent increase for next lease term.",
+          status: "pending",
+          priority: "medium",
+          createdAt: "2023-03-15T00:00:00Z"
+        }
+      ],
       createdAt: "2023-01-01T00:00:00Z",
-      updatedAt: "2023-03-15T00:00:00Z"
+      updatedAt: "2023-03-15T00:00:00Z",
+      image: "https://images.unsplash.com/photo-1518780664697-55e3ad937233?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=765&q=80"
     },
     {
       id: "property-2",
@@ -93,8 +125,21 @@ export default function PropertiesPage() {
           updatedAt: "2023-03-10T00:00:00Z"
         }
       ],
+      jobs: [],
+      aiConversations: [
+        {
+          id: "conv-2",
+          title: "Lease renewal",
+          description: "AI conversation about lease renewal options for Acme Corp.",
+          status: "completed",
+          priority: "high",
+          createdAt: "2023-03-20T00:00:00Z",
+          completedAt: "2023-03-25T00:00:00Z"
+        }
+      ],
       createdAt: "2023-02-15T00:00:00Z",
-      updatedAt: "2023-04-01T00:00:00Z"
+      updatedAt: "2023-04-01T00:00:00Z",
+      image: "https://images.unsplash.com/photo-1464082354059-27db6ce50048?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1470&q=80"
     },
     {
       id: "property-3",
@@ -124,8 +169,19 @@ export default function PropertiesPage() {
           updatedAt: "2023-04-10T00:00:00Z"
         }
       ],
+      jobs: [
+        {
+          id: "job-3",
+          title: "Replace light bulbs",
+          description: "Replace light bulbs in living room and kitchen.",
+          status: "pending",
+          priority: "low",
+          createdAt: "2023-04-15T00:00:00Z"
+        }
+      ],
       createdAt: "2023-03-20T00:00:00Z",
-      updatedAt: "2023-04-15T00:00:00Z"
+      updatedAt: "2023-04-15T00:00:00Z",
+      image: "https://images.unsplash.com/photo-1554995207-c18c203602cb?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1470&q=80"
     },
     {
       id: "property-4",
@@ -150,8 +206,19 @@ export default function PropertiesPage() {
         }
       ],
       documents: [],
+      jobs: [
+        {
+          id: "job-4",
+          title: "Fix elevator",
+          description: "Elevator is not working and needs repair.",
+          status: "pending",
+          priority: "high",
+          createdAt: "2023-05-01T00:00:00Z"
+        }
+      ],
       createdAt: "2023-05-01T00:00:00Z",
-      updatedAt: "2023-05-01T00:00:00Z"
+      updatedAt: "2023-05-01T00:00:00Z",
+      image: "https://images.unsplash.com/photo-1510915228348-7eb41b63bda4?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1470&q=80"
     },
     {
       id: "property-5",
@@ -179,8 +246,19 @@ export default function PropertiesPage() {
           updatedAt: "2023-05-15T00:00:00Z"
         }
       ],
+      jobs: [
+        {
+          id: "job-5",
+          title: "Clean pool",
+          description: "Clean the pool and surrounding area.",
+          status: "pending",
+          priority: "medium",
+          createdAt: "2023-05-20T00:00:00Z"
+        }
+      ],
       createdAt: "2023-04-25T00:00:00Z",
-      updatedAt: "2023-05-20T00:00:00Z"
+      updatedAt: "2023-05-20T00:00:00Z",
+      image: "https://images.unsplash.com/photo-1502673530726-86c3f2c62fe6?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1470&q=80"
     }
   ];
 
@@ -220,6 +298,8 @@ export default function PropertiesPage() {
       id: `property-${Date.now()}`,
       tenants: [],
       documents: [],
+      jobs: [],
+      aiConversations: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -240,9 +320,8 @@ export default function PropertiesPage() {
     const property = properties.find(p => p.id === agGridProperty.id);
     if (property) {
       setSelectedProperty(property);
+      setShowPropertyDetail(true);
       console.log("Selected property:", property);
-      // In a real app, you would navigate to a property details page
-      // or open a modal with property details
     }
   };
 
@@ -255,7 +334,13 @@ export default function PropertiesPage() {
           const documents = p.documents || [];
           return {
             ...p,
-            documents: [...documents, { ...document, id: `doc-${Date.now()}` }],
+            documents: [...documents, { 
+              ...document, 
+              id: `doc-${Date.now()}`,
+              tags: document.tags ? (typeof document.tags === 'string' ? document.tags.split(',').map((tag: string) => tag.trim()) : document.tags) : [],
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }],
           };
         }
         return p;
@@ -299,6 +384,62 @@ export default function PropertiesPage() {
     }
   };
 
+  const handleAddTenant = (propertyId: string, tenant: any) => {
+    // In a real app, you would save to an API
+    // For now, just update the local state
+    const updatedProperties = properties.map(p => {
+      if (p.id === propertyId) {
+        const tenants = p.tenants || [];
+        return {
+          ...p,
+          tenants: [...tenants, { 
+            ...tenant, 
+            id: `tenant-${Date.now()}` 
+          }],
+        };
+      }
+      return p;
+    });
+    
+    setProperties(updatedProperties);
+    setAlertMessage("Tenant added successfully!");
+    setShowAlert(true);
+    
+    // Hide alert after 3 seconds
+    setTimeout(() => {
+      setShowAlert(false);
+    }, 3000);
+  };
+
+  const handleAddJob = (propertyId: string, job: any) => {
+    // In a real app, you would save to an API
+    // For now, just update the local state
+    const updatedProperties = properties.map(p => {
+      if (p.id === propertyId) {
+        const jobs = p.jobs || [];
+        return {
+          ...p,
+          jobs: [...jobs, { 
+            ...job, 
+            id: `job-${Date.now()}`,
+            status: job.status || 'pending',
+            createdAt: new Date().toISOString()
+          }],
+        };
+      }
+      return p;
+    });
+    
+    setProperties(updatedProperties);
+    setAlertMessage("Job added successfully!");
+    setShowAlert(true);
+    
+    // Hide alert after 3 seconds
+    setTimeout(() => {
+      setShowAlert(false);
+    }, 3000);
+  };
+
   return (
     <div className="container mx-auto py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
@@ -336,39 +477,72 @@ export default function PropertiesPage() {
       )}
 
       {/* Main Content */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden relative">
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
           </div>
         ) : (
-          <PropertiesAgGrid
-            properties={properties.map(property => ({
-              id: property.id || '',
-              name: property.address,
-              tag: property.tag || '',
-              address: property.address,
-              type: property.type || '',
-              tenants: property.tenants?.map(tenant => tenant.name) || [],
-              docs: property.documents?.map(doc => doc.name) || [],
-              escalationPolicy: ''
-            }))}
-            onPropertyClick={handlePropertyClick}
-            onAddDoc={(propertyId) => {
-              const property = properties.find(p => p.id === propertyId);
-              if (property) {
-                setSelectedProperty(property);
-                setIsAddDocumentModalOpen(true);
-              }
-            }}
-            onAddEscalationPolicy={(propertyId) => {
-              const property = properties.find(p => p.id === propertyId);
-              if (property) {
-                setSelectedProperty(property);
-                setIsAddEscalationPolicyModalOpen(true);
-              }
-            }}
-          />
+          <>
+            {!showPropertyDetail && (
+              <PropertiesAgGrid
+                properties={properties.map(property => ({
+                  id: property.id || '',
+                  name: property.address,
+                  tag: property.tag || '',
+                  address: property.address,
+                  type: property.type || '',
+                  tenants: property.tenants?.map(tenant => tenant.name) || [],
+                  docs: property.documents?.map(doc => doc.name) || [],
+                  jobs: property.jobs?.map(job => job.title) || [],
+                  aiConversations: property.aiConversations?.map(conv => conv.title) || [],
+                  escalationPolicy: property.escalationPolicy || '',
+                  image: property.image || ''
+                }))}
+                onPropertyClick={handlePropertyClick}
+                onAddDoc={(propertyId) => {
+                  const property = properties.find(p => p.id === propertyId);
+                  if (property) {
+                    setSelectedProperty(property);
+                    setIsAddDocumentModalOpen(true);
+                  }
+                }}
+                onAddEscalationPolicy={(propertyId) => {
+                  const property = properties.find(p => p.id === propertyId);
+                  if (property) {
+                    setSelectedProperty(property);
+                    setIsAddEscalationPolicyModalOpen(true);
+                  }
+                }}
+              />
+            )}
+            
+            {showPropertyDetail && selectedProperty && (
+              <div className="animate-in slide-in-from-right">
+                <PropertyDetailV2
+                  property={{
+                    ...selectedProperty,
+                    id: selectedProperty.id || '',
+                    jobs: selectedProperty.jobs || [],
+                    tenants: selectedProperty.tenants || [],
+                    documents: selectedProperty.documents || [],
+                    createdAt: selectedProperty.createdAt || new Date().toISOString(),
+                    updatedAt: selectedProperty.updatedAt || new Date().toISOString()
+                  }}
+                  onClose={() => setShowPropertyDetail(false)}
+                  onAddDocument={(propertyId, document) => {
+                    handleAddDocumentSubmit(document);
+                  }}
+                  onAddTenant={(propertyId, tenant) => {
+                    handleAddTenant(propertyId, tenant);
+                  }}
+                  onAddJob={(propertyId, job) => {
+                    handleAddJob(propertyId, job);
+                  }}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
 

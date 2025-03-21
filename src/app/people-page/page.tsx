@@ -27,12 +27,18 @@ const PeopleAgGrid = dynamic(() => import("../(components)/people-ag-grid"), {
   ssr: false,
 });
 
+// Dynamically import the Person Detail component
+const PersonDetail = dynamic(() => import("../(components)/person-detail"), {
+  ssr: false,
+});
+
 export default function PeoplePage() {
   const [people, setPeople] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showAddPersonModal, setShowAddPersonModal] = useState(false);
+  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [newPerson, setNewPerson] = useState({
     name: "",
     email: "",
@@ -65,11 +71,16 @@ export default function PeoplePage() {
     setPeople((prev) => prev.filter((person) => person.id !== id));
     setSuccessMessage("Person deleted successfully");
     
+    // If the deleted person is currently selected, clear the selection
+    if (selectedPerson && selectedPerson.id === id) {
+      setSelectedPerson(null);
+    }
+    
     // Clear success message after 3 seconds
     setTimeout(() => {
       setSuccessMessage(null);
     }, 3000);
-  }, []);
+  }, [selectedPerson]);
 
   // Handle person edit
   const handlePersonEdit = useCallback((id: string) => {
@@ -80,9 +91,19 @@ export default function PeoplePage() {
 
   // Handle person view
   const handlePersonView = useCallback((id: string) => {
-    // For now, just log the action
-    console.log(`View person with ID: ${id}`);
-    // In the future, this would navigate to the person detail page
+    console.log("View person with ID:", id);
+    const person = people.find(p => p.id === id);
+    console.log("Found person:", person);
+    if (person) {
+      setSelectedPerson(person);
+    } else {
+      console.error("Person not found with ID:", id);
+    }
+  }, [people]);
+
+  // Handle close person detail
+  const handleClosePersonDetail = useCallback(() => {
+    setSelectedPerson(null);
   }, []);
 
   // Handle add person
@@ -196,6 +217,16 @@ export default function PeoplePage() {
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
           </div>
+        ) : selectedPerson ? (
+          <PersonDetail 
+            person={selectedPerson} 
+            onClose={handleClosePersonDetail}
+            onEdit={handlePersonEdit}
+            onDelete={(id) => {
+              handleClosePersonDetail();
+              handlePersonDeleted(id);
+            }}
+          />
         ) : (
           <PeopleAgGrid
             people={people}
