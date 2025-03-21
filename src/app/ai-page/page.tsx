@@ -24,27 +24,40 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   PlusIcon,
+  FileTextIcon,
+  WrenchIcon,
+  AlertCircleIcon,
+  CheckCircleIcon,
+  SearchIcon,
+  LinkIcon,
+  ArrowRightIcon,
+  HomeIcon,
+  InfoIcon,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { sendMessageToAI } from "@/lib/llm-client";
+import { Message, ToolUse, DocumentReference, ChatOptions } from "@/types/llm";
+import { useRouter } from "next/navigation";
 
 export default function AIPage() {
-  const [messages, setMessages] = useState<
-    Array<{ sender: "ai" | "user"; text: string; timestamp: string }>
-  >([
+  const [messages, setMessages] = useState<Message[]>([
     {
-      sender: "ai",
-      text: "Hello! I'm the Proptuna AI assistant. How can I help you today?",
-      timestamp: "Just now",
+      role: "assistant",
+      content: "Hello! I'm the Proptuna AI assistant. How can I help you today?",
+      timestamp: new Date().toISOString(),
     },
   ]);
   const [inputMessage, setInputMessage] = useState("");
   const [selectedProperty, setSelectedProperty] = useState("");
   const [selectedPerson, setSelectedPerson] = useState("");
-  const [createJob, setCreateJob] = useState(false);
+  const [createJob, setCreateJob] = useState(true);
   const [chatMode, setChatMode] = useState("chat");
   const [showHistory, setShowHistory] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -101,35 +114,42 @@ export default function AIPage() {
     }
   }, [messages]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (inputMessage.trim()) {
+      setError(null);
       const now = new Date();
-      const timeString = now.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-
-      setMessages([
-        ...messages,
-        {
-          sender: "user",
-          text: inputMessage,
-          timestamp: timeString,
-        },
-      ]);
+      const timestamp = now.toISOString();
+      
+      // Add user message to the chat
+      const userMessage: Message = {
+        role: "user",
+        content: inputMessage,
+        timestamp,
+      };
+      
+      setMessages(prevMessages => [...prevMessages, userMessage]);
       setInputMessage("");
+      setIsLoading(true);
 
-      // Simulate AI response
-      setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            sender: "ai",
-            text: "I understand your concern. Let me help you with that. Could you provide more details about the issue?",
-            timestamp: timeString,
-          },
-        ]);
-      }, 1000);
+      try {
+        // Prepare chat options
+        const options: ChatOptions = {
+          property: selectedProperty || undefined,
+          person: selectedPerson || undefined,
+          createJob,
+        };
+
+        // Send message to AI and get response
+        const response = await sendMessageToAI([...messages, userMessage], options);
+        
+        // Add AI response to the chat
+        setMessages(prevMessages => [...prevMessages, response]);
+      } catch (err: any) {
+        console.error("Error sending message:", err);
+        setError(err.message || "Failed to get a response. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -141,30 +161,30 @@ export default function AIPage() {
         // Simulate ending recording and getting a response
         setIsRecording(false);
         const now = new Date();
-        const timeString = now.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
+        
+        const userMessage: Message = {
+          role: "user",
+          content: "I have a problem with my heating system.",
+          timestamp: now.toISOString(),
+        };
 
-        setMessages([
-          ...messages,
-          {
-            sender: "user",
-            text: "I have a problem with my heating system.",
-            timestamp: timeString,
-          },
-        ]);
+        setMessages(prevMessages => [...prevMessages, userMessage]);
 
-        // Simulate AI response
+        // Simulate AI response with a document reference
         setTimeout(() => {
-          setMessages((prev) => [
-            ...prev,
-            {
-              sender: "ai",
-              text: "I understand you're having an issue with your heating system. Can you tell me more about what's happening? Is it not turning on, or is it not heating properly?",
-              timestamp: timeString,
-            },
-          ]);
+          const aiResponse: Message = {
+            role: "assistant",
+            content: "I understand you're having an issue with your heating system. Can you tell me more about what's happening? Is it not turning on, or is it not heating properly?",
+            timestamp: now.toISOString(),
+            documentReference: {
+              id: "doc-789",
+              title: "Heating System Troubleshooting",
+              type: "markdown",
+              relevance: "medium"
+            }
+          };
+          
+          setMessages(prevMessages => [...prevMessages, aiResponse]);
         }, 1000);
       }, 3000);
     }
@@ -173,12 +193,102 @@ export default function AIPage() {
   const startNewConversation = () => {
     setMessages([
       {
-        sender: "ai",
-        text: "Hello! I'm the Proptuna AI assistant. How can I help you today?",
-        timestamp: "Just now",
+        role: "assistant",
+        content: "Hello! I'm the Proptuna AI assistant. How can I help you today?",
+        timestamp: new Date().toISOString(),
       },
     ]);
     setInputMessage("");
+    setError(null);
+  };
+
+  const formatTimestamp = (timestamp: string | undefined): string => {
+    if (!timestamp) return "Just now";
+    
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Render different types of visual indicators
+  const renderToolUseIndicator = (toolUse: ToolUse) => {
+    return (
+      <div className="flex flex-col mt-2 mb-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-md border border-amber-200 dark:border-amber-800">
+        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-sm font-medium mb-1">
+          <WrenchIcon className="h-4 w-4" />
+          <span>Tool: {toolUse.toolName}</span>
+        </div>
+        <div className="text-xs text-amber-600 dark:text-amber-500 font-mono bg-amber-100 dark:bg-amber-900/30 p-2 rounded">
+          {JSON.stringify(toolUse.toolInput, null, 2)}
+        </div>
+        {toolUse.toolOutput && (
+          <div className="mt-2 text-xs text-green-600 dark:text-green-400 font-mono bg-green-50 dark:bg-green-900/30 p-2 rounded">
+            {JSON.stringify(toolUse.toolOutput, null, 2)}
+          </div>
+        )}
+        <div className="flex items-center gap-2 mt-2 text-xs">
+          <Badge 
+            variant="outline" 
+            className={`${
+              toolUse.status === 'completed' 
+                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                : toolUse.status === 'failed'
+                ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+            }`}
+          >
+            {toolUse.status === 'completed' ? (
+              <CheckCircleIcon className="h-3 w-3 mr-1" />
+            ) : toolUse.status === 'failed' ? (
+              <AlertCircleIcon className="h-3 w-3 mr-1" />
+            ) : (
+              <ClockIcon className="h-3 w-3 mr-1" />
+            )}
+            {toolUse.status}
+          </Badge>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDocumentReference = (docRef: DocumentReference) => {
+    return (
+      <div 
+        className="flex flex-col mt-2 mb-2 p-3 bg-indigo-50 dark:bg-indigo-950/20 rounded-md border border-indigo-200 dark:border-indigo-800 cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+        onClick={() => router.push(`/documents-page?document=${docRef.id}`)}
+      >
+        <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400 text-sm font-medium">
+          <FileTextIcon className="h-4 w-4" />
+          <span>Referenced Document</span>
+          <Badge 
+            variant="outline" 
+            className={`ml-auto ${
+              docRef.relevance === 'high' 
+                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                : docRef.relevance === 'medium'
+                ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+            }`}
+          >
+            {docRef.relevance} relevance
+          </Badge>
+        </div>
+        <div className="mt-1 text-sm text-indigo-600 dark:text-indigo-300 flex items-center">
+          <span className="font-medium">{docRef.title}</span>
+          <ArrowRightIcon className="h-3 w-3 mx-1" />
+          <span className="text-xs text-indigo-500 dark:text-indigo-400">View document</span>
+        </div>
+      </div>
+    );
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
   };
 
   return (
@@ -199,282 +309,278 @@ export default function AIPage() {
             New Chat
           </Button>
           <Button
-            className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2"
+            variant="outline"
+            className="flex items-center gap-2"
             onClick={() => setShowHistory(!showHistory)}
           >
-            {showHistory ? (
-              <MessageSquareIcon className="h-4 w-4" />
-            ) : (
-              <HistoryIcon className="h-4 w-4" />
-            )}
-            {showHistory ? "Back to Chat" : "View History"}
+            <HistoryIcon className="h-4 w-4" />
+            {showHistory ? "Hide History" : "Show History"}
           </Button>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden h-[calc(100vh-180px)]">
-        {showHistory ? (
-          <div className="p-6 overflow-y-auto">
-            <h2 className="text-lg font-semibold mb-4">
-              Chat History
-            </h2>
-            <div className="space-y-3">
-              {chatHistory.map((chat, index) => (
-                <Card
-                  key={chat.id}
-                  className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                  onClick={() => {
-                    setShowHistory(false);
-                  }}
-                  id={`0243g1_${index}`}
-                >
-                  <CardContent
-                    className="p-4 flex items-start"
-                    id={`2g6psk_${index}`}
-                  >
-                    <div className="mr-4 mt-1" id={`e1czzn_${index}`}>
-                      {chat.type === "hotline" ? (
-                        <MessageSquareIcon
-                          className="h-5 w-5 text-indigo-500"
-                          id={`rjom3z_${index}`}
-                        />
-                      ) : (
-                        <VolumeIcon
-                          className="h-5 w-5 text-green-500"
-                          id={`shcs9v_${index}`}
-                        />
-                      )}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+        {/* Chat history sidebar */}
+        {showHistory && (
+          <div className="md:col-span-3 space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Chat History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="hotline">
+                  <TabsList className="w-full">
+                    <TabsTrigger value="hotline" className="flex-1">
+                      Hotline
+                    </TabsTrigger>
+                    <TabsTrigger value="agent" className="flex-1">
+                      Agent
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="hotline" className="mt-4">
+                    <div className="space-y-3">
+                      {chatHistory
+                        .filter((chat) => chat.type === "hotline")
+                        .map((chat) => (
+                          <div
+                            key={chat.id}
+                            className="p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                          >
+                            <div className="font-medium text-sm">{chat.title}</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {chat.date}
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 truncate">
+                              {chat.preview}
+                            </div>
+                          </div>
+                        ))}
                     </div>
-                    <div className="flex-1" id={`x22c4m_${index}`}>
-                      <div
-                        className="flex justify-between items-start"
-                        id={`p08q0t_${index}`}
-                      >
-                        <h3 className="font-medium" id={`95wa8o_${index}`}>
-                          {chat.title}
-                        </h3>
-                        <div
-                          className="flex items-center text-xs text-gray-500"
-                          id={`kjgtks_${index}`}
-                        >
-                          <ClockIcon
-                            className="h-3 w-3 mr-1"
-                            id={`m3a9mq_${index}`}
-                          />
-                          {chat.date}
-                        </div>
-                      </div>
-                      <p
-                        className="text-sm text-gray-600 dark:text-gray-400 mt-1"
-                        id={`9v0lk9_${index}`}
-                      >
-                        {chat.preview}
-                      </p>
+                  </TabsContent>
+                  <TabsContent value="agent" className="mt-4">
+                    <div className="space-y-3">
+                      {chatHistory
+                        .filter((chat) => chat.type === "agent")
+                        .map((chat) => (
+                          <div
+                            key={chat.id}
+                            className="p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                          >
+                            <div className="font-medium text-sm">{chat.title}</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {chat.date}
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 truncate">
+                              {chat.preview}
+                            </div>
+                          </div>
+                        ))}
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="p-0 flex-1 flex flex-col h-full relative overflow-hidden">
-            <div
-              className="absolute inset-0 pt-2 px-4 pb-[140px] overflow-y-auto"
-              ref={messagesContainerRef}
-              style={{ scrollBehavior: 'smooth' }}
-            >
-              <div className="flex flex-col min-h-full justify-end">
-                {/* Message bubbles with improved grouping */}
-                {messages.map((message, index) => {
-                  // Check if this message is from the same sender as the previous
-                  const isPreviousSameSender = index > 0 && messages[index - 1].sender === message.sender;
-                  // Add smaller margin if from same sender for better grouping
-                  const marginClass = isPreviousSameSender ? 'mb-1' : 'mb-4';
-                  
-                  return (
-                    <div
-                      key={index}
-                      className={`flex ${marginClass} ${message.sender === "user" ? "justify-end" : "justify-start"}`}
-                      id={`message-${index}`}
-                    >
-                      {/* Only show avatar for first message in a group */}
-                      {message.sender === "ai" && !isPreviousSameSender && (
-                        <Avatar className="h-8 w-8 mr-2 shrink-0" id={`g2otsd_${index}`}>
-                          <AvatarImage
-                            src="https://github.com/polymet-ai.png"
-                            alt="AI"
-                            id={`phhgdq_${index}`}
-                          />
-                          <AvatarFallback id={`82jwph_${index}`}>AI</AvatarFallback>
-                        </Avatar>
-                      )}
-                      
-                      {/* Spacer for message alignment when no avatar */}
-                      {message.sender === "ai" && isPreviousSameSender && (
-                        <div className="w-8 mr-2 shrink-0"></div>
-                      )}
-
-                      <div
-                        className={`max-w-[70%] p-3 ${
-                          message.sender === "user"
-                            ? "bg-indigo-600 text-white rounded-t-lg rounded-bl-lg"
-                            : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-t-lg rounded-br-lg"
-                        } ${
-                          // Adjust rounding for message groups
-                          isPreviousSameSender 
-                            ? message.sender === "user" 
-                              ? "rounded-r-lg" 
-                              : "rounded-l-lg"
-                            : ""
-                        }`}
-                        id={`7dzsr7_${index}`}
-                      >
-                        <div className="text-sm" id={`bcafvr_${index}`}>
-                          {message.text}
-                        </div>
-                        <div
-                          className="text-xs mt-1 opacity-70"
-                          id={`54q6gy_${index}`}
-                        >
-                          {message.timestamp}
-                        </div>
-                      </div>
-
-                      {/* Same for user avatar - only show for first message in group */}
-                      {message.sender === "user" && !isPreviousSameSender && (
-                        <Avatar className="h-8 w-8 ml-2 shrink-0" id={`0wbtqt_${index}`}>
-                          <AvatarImage
-                            src="https://github.com/yusufhilmi.png"
-                            alt="User"
-                            id={`kaw23p_${index}`}
-                          />
-                          <AvatarFallback id={`ezcbyw_${index}`}>U</AvatarFallback>
-                        </Avatar>
-                      )}
-                      
-                      {/* Spacer for message alignment when no avatar */}
-                      {message.sender === "user" && isPreviousSameSender && (
-                        <div className="w-8 ml-2 shrink-0"></div>
-                      )}
-                    </div>
-                  );
-                })}
-                <div ref={messagesEndRef} />
-              </div>
-            </div>
-
-            {/* Input area - fixed at the bottom with optimized height */}
-            <div className="absolute bottom-0 left-0 right-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 p-2 border-b border-gray-100 dark:border-gray-700">
-                <div>
-                  <Select
-                    value={selectedProperty}
-                    onValueChange={setSelectedProperty}
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Property" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {properties.map((property, index) => (
-                        <SelectItem
-                          key={property.id}
-                          value={property.id}
-                          id={`jjx8yg_${index}`}
-                        >
-                          {property.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Select
-                    value={selectedPerson}
-                    onValueChange={setSelectedPerson}
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Person" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {people.map((person, index) => (
-                        <SelectItem
-                          key={person.id}
-                          value={person.id}
-                          id={`ja2j23_${index}`}
-                        >
-                          {person.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex items-center">
-                  <span
-                    className="text-sm text-gray-600 dark:text-gray-400 mr-2"
-                  >
-                    Create job
-                  </span>
-                  <Switch
-                    checked={createJob}
-                    onCheckedChange={setCreateJob}
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2 items-center p-3">
-                <div className="mr-2 hidden sm:block">
-                  <div className="flex space-x-1 h-9">
-                    <Button
-                      variant={chatMode === "chat" ? "default" : "outline"}
-                      onClick={() => setChatMode("chat")}
-                      className={`px-3 h-9 ${chatMode === "chat" ? "bg-indigo-600 hover:bg-indigo-700 text-white" : "text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/20"}`}
-                      size="sm"
-                    >
-                      <MessageSquareIcon className="h-4 w-4 mr-1" />
-                      <span className="text-xs">Chat</span>
-                    </Button>
-                    <Button
-                      variant={chatMode === "voice" ? "default" : "outline"}
-                      onClick={() => setChatMode("voice")}
-                      className={`px-3 h-9 ${chatMode === "voice" ? "bg-indigo-600 hover:bg-indigo-700 text-white" : "text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/20"}`}
-                      size="sm"
-                    >
-                      <VolumeIcon className="h-4 w-4 mr-1" />
-                      <span className="text-xs">Voice</span>
-                    </Button>
-                  </div>
-                </div>
-
-                {chatMode === "chat" ? (
-                  <>
-                    <Input
-                      value={inputMessage}
-                      onChange={(e) => setInputMessage(e.target.value)}
-                      placeholder="Type your message..."
-                      onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                      className="flex-1 rounded-full border-gray-300 focus:border-indigo-400 focus:ring-indigo-400 h-9"
-                    />
-
-                    <Button onClick={handleSendMessage} className="rounded-full p-2 aspect-square h-9 w-9 bg-indigo-600 hover:bg-indigo-700 text-white" size="icon">
-                      <SendIcon className="h-4 w-4" />
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    onClick={toggleRecording}
-                    size="lg"
-                    className={`flex-1 ${isRecording ? "bg-red-500 hover:bg-red-600" : "bg-indigo-600 hover:bg-indigo-700"} text-white`}
-                  >
-                    <MicIcon className="h-5 w-5 mr-2" />
-                    {isRecording ? "Recording..." : "Start Recording"}
-                  </Button>
-                )}
-              </div>
-            </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
           </div>
         )}
+
+        {/* Main chat area */}
+        <div className={`${showHistory ? "md:col-span-9" : "md:col-span-12"}`}>
+          <Card className="h-[75vh] flex flex-col">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Tabs
+                    value={chatMode}
+                    onValueChange={setChatMode}
+                    className="w-[200px]"
+                  >
+                    <TabsList className="w-full">
+                      <TabsTrigger value="chat" className="flex-1">
+                        <MessageSquareIcon className="h-4 w-4 mr-2" />
+                        Chat
+                      </TabsTrigger>
+                      <TabsTrigger value="voice" className="flex-1">
+                        <VolumeIcon className="h-4 w-4 mr-2" />
+                        Voice
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={selectedProperty}
+                      onValueChange={setSelectedProperty}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Select property" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {properties.map((property) => (
+                          <SelectItem key={property.id} value={property.id}>
+                            {property.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={selectedPerson}
+                      onValueChange={setSelectedPerson}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Select person" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {people.map((person) => (
+                          <SelectItem key={person.id} value={person.id}>
+                            {person.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="create-job"
+                      checked={createJob}
+                      onCheckedChange={setCreateJob}
+                    />
+                    <label
+                      htmlFor="create-job"
+                      className="text-sm font-medium cursor-pointer select-none"
+                    >
+                      Create Job
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-grow overflow-hidden p-0 relative">
+              {/* Chat messages */}
+              <div
+                ref={messagesContainerRef}
+                className="h-full overflow-y-auto p-6 space-y-6"
+              >
+                {messages.map((message, index) => (
+                  <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div
+                      className={`flex gap-3 max-w-[80%] ${
+                        message.role === "user" ? "flex-row-reverse" : "flex-row"
+                      }`}
+                    >
+                      <Avatar className={`h-9 w-9 ${message.role === "user" ? "bg-indigo-100" : "bg-amber-100"}`}>
+                        <AvatarFallback className={message.role === "user" ? "text-indigo-600" : "text-amber-600"}>
+                          {message.role === "user" ? "U" : "AI"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div
+                        className={`flex flex-col ${
+                          message.role === "user" ? "items-end" : "items-start"
+                        }`}
+                      >
+                        <div
+                          className={`rounded-lg px-4 py-3 ${
+                            message.role === "user"
+                              ? "bg-indigo-600 text-white"
+                              : "bg-gray-100 dark:bg-gray-800"
+                          }`}
+                        >
+                          <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                        </div>
+                        
+                        {/* Show tool use indicator if present */}
+                        {message.toolUse && message.role === "assistant" && renderToolUseIndicator(message.toolUse)}
+                        
+                        {/* Show document reference if present */}
+                        {message.documentReference && message.role === "assistant" && renderDocumentReference(message.documentReference)}
+                        
+                        <div className={`text-xs mt-1 text-gray-500 ${
+                          message.role === "user" ? "text-right" : "text-left"
+                        }`}>
+                          {formatTimestamp(message.timestamp)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Loading indicator */}
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="flex gap-3 max-w-[80%]">
+                      <Avatar className="h-9 w-9 bg-amber-100">
+                        <AvatarFallback className="text-amber-600">AI</AvatarFallback>
+                      </Avatar>
+                      <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg px-4 py-3">
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                          <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error message */}
+                {error && (
+                  <div className="flex justify-center">
+                    <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-2 rounded-lg flex items-center gap-2 text-sm">
+                      <AlertCircleIcon className="h-4 w-4" />
+                      {error}
+                    </div>
+                  </div>
+                )}
+
+                <div ref={messagesEndRef} />
+              </div>
+            </CardContent>
+            <div className="p-4 border-t">
+              {chatMode === "chat" ? (
+                <div className="flex items-start gap-2">
+                  <Input
+                    placeholder="Type your message..."
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="flex-grow"
+                    disabled={isLoading}
+                  />
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={isLoading || !inputMessage.trim()}
+                    className={`${
+                      !inputMessage.trim() ? "opacity-70" : ""
+                    } bg-indigo-600 hover:bg-indigo-700 text-white`}
+                  >
+                    <SendIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex justify-center">
+                  <Button
+                    onClick={toggleRecording}
+                    className={`rounded-full w-12 h-12 flex items-center justify-center ${
+                      isRecording
+                        ? "bg-red-600 hover:bg-red-700"
+                        : "bg-indigo-600 hover:bg-indigo-700"
+                    }`}
+                    disabled={isLoading}
+                  >
+                    <MicIcon className="h-5 w-5 text-white" />
+                  </Button>
+                  {isRecording && <span className="ml-3 text-sm">Listening...</span>}
+                </div>
+              )}
+              <div className="text-xs text-center mt-2 text-gray-500">
+                <InfoIcon className="inline h-3 w-3 mr-1" />
+                Chat messages are used to improve the AI assistant.
+              </div>
+            </div>
+          </Card>
+        </div>
       </div>
     </div>
   );
