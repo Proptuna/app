@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentOrganizationId } from "@/lib/organization";
 import { associateDocumentWithProperty } from "@/lib/documents";
 
 /**
@@ -23,14 +22,10 @@ export async function POST(
       );
     }
     
-    // In a real implementation, get organizationId from auth context
-    const organizationId = getCurrentOrganizationId();
-    
     const association = await associateDocumentWithProperty(
       documentId,
       body.property_id,
-      body.metadata || {},
-      organizationId
+      body.metadata || {}
     );
     
     return NextResponse.json(association, { status: 201 });

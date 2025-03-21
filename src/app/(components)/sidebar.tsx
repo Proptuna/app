@@ -112,13 +112,13 @@ export function Sidebar({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuItem asChild>
-              <Link href="/profile" className="flex cursor-pointer items-center">
+              <Link href="/account-page?tab=profile" className="flex cursor-pointer items-center">
                 <UserIcon className="mr-2 h-4 w-4 text-indigo-500" />
                 <span>Profile</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/settings" className="flex cursor-pointer items-center">
+              <Link href="/account-page?tab=preferences" className="flex cursor-pointer items-center">
                 <SettingsIcon className="mr-2 h-4 w-4 text-indigo-500" />
                 <span>Settings</span>
               </Link>

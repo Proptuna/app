@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentOrganizationId } from "@/lib/organization";
 import { removeDocumentPersonAssociation } from "@/lib/documents";
 
 /**
@@ -12,14 +11,10 @@ export async function DELETE(
 ) {
   const { id: documentId, personId } = params;
   
-  // In a real implementation, get organizationId from auth context
-  const organizationId = getCurrentOrganizationId();
-  
   try {
     const result = await removeDocumentPersonAssociation(
       documentId,
-      personId,
-      organizationId
+      personId
     );
     
     return NextResponse.json(result);

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentOrganizationId } from "@/lib/organization";
-import { removeDocumentGroupAssociation } from "@/lib/documents";
+import { removeDocumentTagAssociation } from "@/lib/documents";
 
 /**
  * DELETE /api/v1/documents/:id/groups/:groupId
- * Remove a document's association with a group
+ * Remove a document's association with a group (using tags since groups are implemented as tags)
  */
 export async function DELETE(
   request: NextRequest,
@@ -12,14 +11,13 @@ export async function DELETE(
 ) {
   const { id: documentId, groupId } = params;
   
-  // In a real implementation, get organizationId from auth context
-  const organizationId = getCurrentOrganizationId();
+  // Using tagId since groups are implemented as tags
+  const tagId = groupId;
   
   try {
-    const result = await removeDocumentGroupAssociation(
+    const result = await removeDocumentTagAssociation(
       documentId,
-      groupId,
-      organizationId
+      tagId
     );
     
     return NextResponse.json(result);

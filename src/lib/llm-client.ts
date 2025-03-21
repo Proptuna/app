@@ -415,24 +415,30 @@ Your primary responsibilities include:
     
     // Check for maintenance task creation and request a follow-up response if needed
     const processMaintenanceTaskResponse = async (toolUse: ToolUse, response: ChatCompletionResponse) => {
-      if (toolUse.name === "createMaintenanceTask" && response.choices[0].message.content === null) {
-        // The AI didn't provide a follow-up response after creating the task
-        // Let's generate one
+      if (toolUse && toolUse.name === "createMaintenanceTask") {
+        // Always generate a follow-up response for maintenance tasks
+        // This ensures users get guidance even if the LLM doesn't provide follow-up content
+        const priority = toolUse.args.priority || "medium";
+        const isEmergency = priority === "emergency" || priority === "high";
+        
         const followUpPrompt = {
           role: "system" as const,
           content: `The user reported a maintenance issue and you created a task with the following details:
-Priority: ${toolUse.args.priority || "not specified"}
+Priority: ${priority}
 Description: ${toolUse.args.description || "not specified"}
 Property: ${toolUse.args.property || "not specified"}
+Contact: ${toolUse.args.contact || "not specified"}
 
-Please generate a helpful response confirming the maintenance task was created. Include:
-1. Confirmation that the issue has been reported
-2. Next steps the user should take (if any)
-3. Expected timeline for resolution based on priority
-4. Any safety precautions if relevant (e.g., turn off water main for floods)
-5. Ask if there's anything else they need help with
+${isEmergency ? `This is an EMERGENCY situation that requires immediate attention and safety guidance.` : `This is a ${priority} priority issue.`}
 
-Be empathetic and reassuring, especially for emergency or high-priority issues.`
+Please generate a detailed and helpful response that includes:
+1. Confirmation that the issue has been reported and a maintenance task created
+2. Specific safety steps the user should take immediately (e.g., turn off water main for floods, electrical breaker for electrical issues)
+3. Troubleshooting guidance they can try while waiting for maintenance 
+4. Timeline for when they can expect assistance based on the priority
+5. Ask if there are other details they need help with
+
+Be empathetic, thorough, and focus on safety first. Provide step-by-step instructions for any emergency procedures.`
         };
         
         // Generate a follow-up response
@@ -440,9 +446,9 @@ Be empathetic and reassuring, especially for emergency or high-priority issues.`
           model: response.model,
           messages: [
             followUpPrompt,
-            { role: "user" as const, content: "I need a response for the maintenance task I just created." }
+            { role: "user" as const, content: "I need detailed guidance for the maintenance task I just created." }
           ],
-          max_tokens: 1000,
+          max_tokens: 1500,
           temperature: 0.7
         };
         
@@ -460,7 +466,7 @@ Be empathetic and reassuring, especially for emergency or high-priority issues.`
           if (followUpResponse.ok) {
             const followUpData = await followUpResponse.json() as ChatCompletionResponse;
             if (followUpData.choices && followUpData.choices.length > 0) {
-              return followUpData.choices[0].message.content || "Your maintenance request has been submitted successfully.";
+              return followUpData.choices[0].message.content || generateFallbackResponse(toolUse);
             }
           }
         } catch (error) {
@@ -468,12 +474,35 @@ Be empathetic and reassuring, especially for emergency or high-priority issues.`
         }
         
         // Fallback response if API call fails
-        return "Your maintenance request has been submitted successfully. Our team will address it based on the priority level. Is there anything else you need help with?";
+        return generateFallbackResponse(toolUse);
       }
       
+      // Return original message content if not a maintenance task or if above logic didn't return
       return response.choices[0].message.content;
     };
 
+    // Generate a fallback response based on task details
+    const generateFallbackResponse = (toolUse: ToolUse): string => {
+      const priority = toolUse.args.priority || "medium";
+      const isEmergency = priority === "emergency" || priority === "high";
+      
+      if (isEmergency) {
+        return `I've created an emergency maintenance task for this issue. Our team has been notified and will respond as quickly as possible.
+
+In the meantime, here are some important safety steps:
+- If this is a water leak: Turn off the water main if you can locate it safely
+- For electrical issues: Do not touch wet electrical appliances or wiring
+- If there's flooding: Move valuable items to higher ground and avoid walking in standing water
+- For gas smell: Leave the area immediately and call emergency services (911)
+
+The property manager will be contacting you soon at the number you provided. Is there anything else you need help with or any other details I should add to the maintenance report?`;
+      } else {
+        return `Your maintenance request has been submitted successfully. Our team will address it based on the ${priority} priority level, typically within ${priority === "medium" ? "1-2 business days" : "3-5 business days"}.
+
+In the meantime, is there anything specific you'd like to know about the issue or any additional details you'd like to add to the maintenance report?`;
+      }
+    };
+    
     // Create the final response object
     const assistantMessage: Message = {
       role: "assistant" as const,

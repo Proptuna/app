@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -48,12 +49,21 @@ import {
 } from "@/components/ui/dialog";
 
 export default function AccountPage() {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("profile");
   const [showAddMemberDialog, setShowAddMemberDialog] = useState(false);
   const [showRemoveMemberDialog, setShowRemoveMemberDialog] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<string | null>(null);
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [newMemberRole, setNewMemberRole] = useState("member");
+
+  useEffect(() => {
+    // Get tab from URL parameters
+    const tabParam = searchParams.get("tab");
+    if (tabParam && ["profile", "organization", "preferences"].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   // Mock user data
   const [userSettings, setUserSettings] = useState({

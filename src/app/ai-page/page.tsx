@@ -15,28 +15,28 @@ import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
-  SendIcon,
-  MicIcon,
-  ClockIcon,
-  HistoryIcon,
-  MessageSquareIcon,
-  VolumeIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-  PlusIcon,
-  FileTextIcon,
-  WrenchIcon,
-  AlertCircleIcon,
-  CheckCircleIcon,
-  SearchIcon,
-  LinkIcon,
-  ArrowRightIcon,
-  HomeIcon,
-  InfoIcon,
-  SlidersIcon,
-  PhoneIcon,
-  UserIcon,
-  CalendarIcon,
+  AlertCircle as AlertCircleIcon,
+  CheckCircle as CheckCircleIcon,
+  Home as HomeIcon,
+  User as UserIcon,
+  Calendar as CalendarIcon,
+  Clock as ClockIcon,
+  Info as InfoIcon,
+  Send as SendIcon,
+  Mic as MicIcon,
+  MessageSquare as MessageSquareIcon,
+  Volume as VolumeIcon,
+  ChevronDown as ChevronDownIcon,
+  ChevronUp as ChevronUpIcon,
+  Plus as PlusIcon,
+  FileText as FileTextIcon,
+  Wrench as WrenchIcon,
+  Search as SearchIcon,
+  Link as LinkIcon,
+  ArrowRight as ArrowRightIcon,
+  Sliders as SlidersIcon,
+  Phone as PhoneIcon,
+  History as HistoryIcon,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { sendMessageToAI } from "@/lib/llm-client";
@@ -244,8 +244,19 @@ export default function AIPage() {
         }
       };
       
+      // Get estimated response time based on priority
+      const getEstimatedResponse = (priority: string) => {
+        switch(priority) {
+          case 'emergency': return 'ASAP / Within 1 hour';
+          case 'high': return 'Within 4 hours';
+          case 'medium': return '1-2 business days';
+          case 'low': return '3-5 business days';
+          default: return 'Based on priority';
+        }
+      };
+      
       return (
-        <div className="mt-2 mb-2 p-3 bg-green-50 dark:bg-green-950/20 rounded-md border border-green-200 dark:border-green-800">
+        <div className="mt-2 mb-4 p-3 bg-green-50 dark:bg-green-950/20 rounded-md border border-green-200 dark:border-green-800">
           <div className="flex items-center gap-2 text-green-700 dark:text-green-400 text-sm font-medium">
             <CheckCircleIcon className="h-4 w-4" />
             <span>Maintenance task created successfully</span>
@@ -274,11 +285,21 @@ export default function AIPage() {
                 <p className="mt-1">{task.description}</p>
               </div>
             </div>
+            
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <ClockIcon className="h-4 w-4" />
+              <span className="font-medium">Expected response:</span>
+              <span>{getEstimatedResponse(task.priority)}</span>
+            </div>
           </div>
           
           <div className="mt-3 flex items-center gap-2 text-xs text-green-600 dark:text-green-500">
             <CalendarIcon className="h-3 w-3" />
             <span>Created: {new Date().toLocaleString()}</span>
+          </div>
+          
+          <div className="mt-1 text-xs text-gray-500">
+            Property management has been notified. See guidance below.
           </div>
         </div>
       );
@@ -551,6 +572,12 @@ export default function AIPage() {
                           message.role === "user" ? "items-end" : "items-start"
                         }`}
                       >
+                        {/* Show tool use indicator before content for maintenance tasks */}
+                        {message.toolUse && 
+                         message.role === "assistant" && 
+                         message.toolUse.name === "createMaintenanceTask" && 
+                         renderToolUseIndicator(message.toolUse)}
+                        
                         {/* Message content with Markdown support */}
                         {message.content && (
                           <div 
@@ -569,8 +596,11 @@ export default function AIPage() {
                           </div>
                         )}
                         
-                        {/* Show tool use indicator if present */}
-                        {message.toolUse && message.role === "assistant" && renderToolUseIndicator(message.toolUse)}
+                        {/* Show tool use indicator after content for non-maintenance tasks */}
+                        {message.toolUse && 
+                         message.role === "assistant" && 
+                         message.toolUse.name !== "createMaintenanceTask" && 
+                         renderToolUseIndicator(message.toolUse)}
                         
                         {/* Show document reference if present */}
                         {message.documentReference && message.role === "assistant" && renderDocumentReference(message.documentReference)}
