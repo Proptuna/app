@@ -4,8 +4,10 @@ import React, { useState, useEffect } from "react";
 import { fetchDocumentById } from "@/lib/documents-client";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Download } from "lucide-react";
-import { format } from "date-fns";
+import { ArrowLeft, Download, FileText } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 
 export default function DocumentViewPage({ params }: { params: { id: string } }) {
   const [document, setDocument] = useState<any>(null);
@@ -28,7 +30,7 @@ export default function DocumentViewPage({ params }: { params: { id: string } })
         
         console.log("Making API call to fetch document...");
         const doc = await fetchDocumentById(params.id);
-        console.log("Document loaded successfully:", JSON.stringify(doc, null, 2));
+        console.log("Document loaded successfully:", doc.title);
         
         if (!doc) {
           console.error("Document not found");
@@ -39,6 +41,14 @@ export default function DocumentViewPage({ params }: { params: { id: string } })
         
         setDocument(doc);
         setError(null);
+        
+        // Update the URL to use the correct documents-page path for consistency
+        // but do this silently without affecting browser history
+        window.history.replaceState(
+          {}, 
+          document.title, 
+          `/documents-page?docId=${params.id}`
+        );
       } catch (err: any) {
         console.error("Error loading document:", err);
         setError(err.message || "Failed to load document");
@@ -62,129 +72,113 @@ export default function DocumentViewPage({ params }: { params: { id: string } })
       a.download = `${document.title}.md`;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
     }
-    // For other document types, implement appropriate download logic
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return "Unknown";
     const date = new Date(dateString);
-    return format(date, "PPP");
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
   };
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto py-8 px-4 max-w-4xl">
       <div className="mb-6 flex items-center justify-between">
         <Button 
           variant="outline" 
-          onClick={() => {
-            // Try to use router.back() first, but if that doesn't work, navigate to documents-page
-            try {
-              router.back();
-            } catch (e) {
-              window.location.href = "/documents-page";
-            }
-          }} 
+          onClick={() => router.push('/documents-page')} 
           className="flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Documents
         </Button>
-        {document && (
-          <Button onClick={handleDownload} className="flex items-center gap-2">
+        
+        {!isLoading && document && (
+          <Button 
+            variant="outline"
+            onClick={handleDownload} 
+            className="flex items-center gap-2"
+          >
             <Download className="h-4 w-4" />
             Download
           </Button>
         )}
       </div>
 
-      {isLoading && (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin h-8 w-8 border-4 border-primary rounded-full border-t-transparent"></div>
+      {isLoading ? (
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-2/3" />
+          <Skeleton className="h-4 w-1/4" />
+          <Skeleton className="h-4 w-1/3" />
+          <div className="space-y-2 mt-8">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-4/5" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
         </div>
-      )}
-
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
-      )}
-
-      {document && !isLoading && (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="px-6 py-4 border-b">
-            <h1 className="text-2xl font-bold">{document.title}</h1>
-            <div className="mt-2 text-sm text-gray-500">
-              <span className="inline-block mr-4">
-                Type: <span className="font-medium">{document.type}</span>
-              </span>
-              <span className="inline-block mr-4">
-                Visibility: <span className="font-medium">{document.visibility}</span>
-              </span>
-              <span className="inline-block">
-                Created: <span className="font-medium">{formatDate(document.created_at)}</span>
-              </span>
+      ) : error ? (
+        <Alert variant="destructive" className="my-8">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            {error}
+            <div className="mt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => router.push('/documents-page')}
+              >
+                Return to Documents
+              </Button>
             </div>
-          </div>
-
-          <div className="px-6 py-4">
-            {document.type === "markdown" ? (
-              <div className="prose max-w-none">
-                {/* You may want to add a markdown renderer here */}
-                <pre className="whitespace-pre-wrap">{document.data}</pre>
-              </div>
-            ) : (
-              <div className="bg-gray-100 p-4 rounded">
-                <p>Preview not available for this document type.</p>
-              </div>
-            )}
-          </div>
-
-          {document.associations && (
-            <div className="px-6 py-4 border-t">
-              <h2 className="text-lg font-semibold mb-2">Associations</h2>
-              
-              {document.associations.properties && document.associations.properties.length > 0 && (
-                <div className="mb-3">
-                  <h3 className="text-sm font-medium text-gray-700">Properties:</h3>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {document.associations.properties.map((property: any, index: number) => (
-                      <span key={`property-${index}`} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                        {property.address || property.id}
-                      </span>
-                    ))}
-                  </div>
+          </AlertDescription>
+        </Alert>
+      ) : document && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-2xl font-bold">{document.title}</h1>
+              <Badge variant="outline">{document.type}</Badge>
+            </div>
+            
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              <p>Created: {formatDate(document.created_at)}</p>
+              <p>Last Updated: {formatDate(document.updated_at)}</p>
+              <p>Visibility: {document.visibility}</p>
+            </div>
+            
+            <div className="prose dark:prose-invert max-w-none">
+              {document.type === "markdown" ? (
+                <div className="whitespace-pre-wrap border p-4 rounded-md bg-gray-50 dark:bg-gray-900">
+                  {document.data}
                 </div>
-              )}
-              
-              {document.associations.people && document.associations.people.length > 0 && (
-                <div className="mb-3">
-                  <h3 className="text-sm font-medium text-gray-700">People:</h3>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {document.associations.people.map((person: any, index: number) => (
-                      <span key={`person-${index}`} className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                        {person.name || person.id}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {document.associations.groups && document.associations.groups.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700">Groups:</h3>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {document.associations.groups.map((group: any, index: number) => (
-                      <span key={`group-${index}`} className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
-                        {group.name || group.id}
-                      </span>
-                    ))}
+              ) : (
+                <div className="flex items-center justify-center p-12 border-2 border-dashed rounded-lg">
+                  <div className="text-center">
+                    <FileText className="h-12 w-12 mx-auto text-gray-400" />
+                    <p className="mt-2 text-sm text-gray-500">
+                      This document type cannot be previewed directly.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDownload}
+                      className="mt-4"
+                    >
+                      Download to View
+                    </Button>
                   </div>
                 </div>
               )}
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>

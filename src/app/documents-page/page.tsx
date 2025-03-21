@@ -80,29 +80,142 @@ export default function DocumentsPage() {
     }
   }, []);
 
-  // Initial load
+  // Fetch documents on component mount
   useEffect(() => {
     loadDocuments();
   }, [loadDocuments]);
 
-  // Handle document selection for viewing
-  const handleViewDocument = async (document: any) => {
-    try {
-      // Fetch the full document details
-      const fullDocument = await fetchDocumentById(document.id);
-      setSelectedDocument(fullDocument);
-      setIsViewingDocument(true);
-    } catch (err: any) {
-      console.error("Error fetching document details:", err);
-      setError(err.message || "Failed to load document details. Please try again.");
-    }
-  };
+  // Debug state changes
+  useEffect(() => {
+    console.log("Selected document changed:", selectedDocument?.title || "none");
+  }, [selectedDocument]);
+  
+  useEffect(() => {
+    console.log("isViewingDocument state changed:", isViewingDocument);
+  }, [isViewingDocument]);
 
-  // Handle closing document view
-  const handleCloseDocumentView = () => {
-    setSelectedDocument(null);
+  // Handle document ID in URL with improved timing management
+  useEffect(() => {
+    const handleDocumentInUrl = async () => {
+      console.group("URL Document Parameter Handling");
+      // Check for document ID in path or query parameters
+      const url = window.location.href;
+      console.log("Current URL:", url);
+      
+      const pathRegex = /\/documents-page\/([^\/\?]+)/;
+      const pathMatch = url.match(pathRegex);
+      
+      // Check for document ID in query parameters - support both formats
+      const searchParams = new URLSearchParams(window.location.search);
+      const queryDocId = searchParams.get('docId') || searchParams.get('document');
+      const shouldViewDocument = searchParams.get('view') === 'true';
+      
+      console.log("Path match:", pathMatch?.[1] || "none");
+      console.log("Query docId:", queryDocId || "none");
+      console.log("Parameter used:", searchParams.has('docId') ? 'docId' : searchParams.has('document') ? 'document' : 'none');
+      console.log("Should view document:", shouldViewDocument);
+      
+      const documentId = pathMatch?.[1] || queryDocId;
+      
+      if (!documentId) {
+        console.log("No document ID found in URL");
+        console.groupEnd();
+        return;
+      }
+      
+      console.log("Found document ID in URL:", documentId);
+      console.log("Should view document:", shouldViewDocument);
+      console.log("Documents loaded:", documents.length);
+      console.log("Current isViewingDocument state:", isViewingDocument);
+      
+      // First check if document is already in our loaded documents
+      if (documents.length > 0) {
+        const docInState = documents.find(doc => doc.id === documentId);
+        if (docInState) {
+          console.log("Document found in already loaded documents:", docInState.title);
+          // Make sure to use the full document
+          try {
+            console.log("Fetching fresh document by ID to get full content:", documentId);
+            const fullDoc = await fetchDocumentById(documentId);
+            if (fullDoc) {
+              console.log("Fresh document fetched successfully:", fullDoc.title);
+              setSelectedDocument(fullDoc);
+              setIsViewingDocument(true);
+              console.groupEnd();
+              return;
+            }
+          } catch (error) {
+            console.error("Error fetching fresh document:", error);
+            // Fallback to the document from state
+            setSelectedDocument(docInState);
+            setIsViewingDocument(true);
+          }
+          console.groupEnd();
+          return;
+        } else {
+          console.log("Document not found in loaded documents");
+        }
+      } else {
+        console.log("No documents loaded yet");
+      }
+      
+      // If document not found in our state (or documents not loaded yet), fetch it directly
+      try {
+        console.log("Fetching document by ID directly:", documentId);
+        const doc = await fetchDocumentById(documentId);
+        if (doc) {
+          console.log("Document fetched successfully:", doc.title);
+          setSelectedDocument(doc);
+          setIsViewingDocument(true);
+          
+          // Clean up the URL without changing browser history
+          // But keep the docId parameter to maintain the reference
+          if (shouldViewDocument) {
+            // Use standardized 'docId' parameter format
+            const newUrl = `${window.location.pathname}?docId=${documentId}`;
+            console.log("Cleaning URL to:", newUrl);
+            window.history.replaceState({}, '', newUrl);
+          }
+        } else {
+          console.error("Document not found with ID:", documentId);
+          setError(`Document not found with ID: ${documentId}`);
+        }
+      } catch (error) {
+        console.error("Error loading document from URL:", error);
+        setError(`Error loading document: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      console.groupEnd();
+    };
+    
+    handleDocumentInUrl();
+  }, [documents]);
+
+  // Handle document selection for viewing
+  const handleViewDocument = useCallback((doc: any) => {
+    console.log("Viewing document:", doc.title);
+    setSelectedDocument(doc);
+    setIsViewingDocument(true);
+    
+    // Update the URL to include the document ID (without adding to history)
+    // Always use 'docId' as the standard parameter name
+    const newUrl = `${window.location.pathname}?docId=${doc.id}`;
+    console.log("Setting document URL:", newUrl);
+    window.history.replaceState({}, '', newUrl);
+  }, []);
+  
+  const handleCloseDocumentView = useCallback(() => {
+    console.log("Closing document view");
     setIsViewingDocument(false);
-  };
+    
+    // Clean up the URL when closing document view
+    const newUrl = window.location.pathname;
+    window.history.replaceState({}, '', newUrl);
+    
+    // Small delay to avoid jumpy animations
+    setTimeout(() => {
+      setSelectedDocument(null);
+    }, 300);
+  }, []);
 
   // Handle document deletion
   const handleDocumentDeleted = (id: string) => {
@@ -238,7 +351,7 @@ export default function DocumentsPage() {
   };
 
   return (
-    <div className="container mx-auto py-8">
+    <div>
       {/* Success Message */}
       {successMessage && (
         <div className="bg-green-50 text-green-800 p-4 rounded-md mb-4 flex items-center gap-2 border border-green-200">

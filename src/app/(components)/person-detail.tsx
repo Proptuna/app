@@ -72,7 +72,7 @@ interface PersonWithAvatar extends Person {
 
 interface PersonDetailProps {
   person: Person;
-  onClose: () => void;
+  onClose?: () => void;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
 }
@@ -83,7 +83,7 @@ export default function PersonDetail({
   onEdit,
   onDelete
 }: PersonDetailProps) {
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState<string>("overview");
   
   // Get initials for avatar
   const getInitials = (name: string) => {
@@ -136,6 +136,17 @@ export default function PersonDetail({
     ).join(" ");
   };
   
+  // Improve the back button to ensure proper routing
+  const handleBack = () => {
+    if (onClose) {
+      // If there's an onClose handler, this is being used in a modal/dialog
+      onClose();
+    } else {
+      // If being accessed directly via URL, navigate to people page
+      window.location.href = '/people-page';
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
       {/* Header */}
@@ -143,12 +154,12 @@ export default function PersonDetail({
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="h-8 w-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+            size="sm"
+            onClick={handleBack}
+            className="gap-2"
           >
             <ArrowLeftIcon className="h-4 w-4" />
-            <span className="sr-only">Back</span>
+            Back to People
           </Button>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Person Details</h2>
         </div>

@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { PlusIcon, AlertCircle, CheckCircle } from "lucide-react";
@@ -19,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { fetchPeople, createPerson, Person } from "@/lib/people-client";
+import { fetchPeople, createPerson, fetchPersonById, Person } from "@/lib/people-client";
 import dynamic from "next/dynamic";
 
 // Dynamically import the AG Grid component
@@ -47,24 +49,73 @@ export default function PeoplePage() {
     role: "",
   });
 
+  // Load people function
+  const loadPeople = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetchPeople();
+      setPeople(response.data);
+      setError(null);
+    } catch (err: any) {
+      console.error("Error fetching people:", err);
+      setError(err.message || "Failed to load people");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Fetch people on component mount
   useEffect(() => {
-    const loadPeople = async () => {
+    loadPeople();
+  }, [loadPeople]);
+
+  // Handle person ID in URL
+  useEffect(() => {
+    const handlePersonInUrl = async () => {
+      // Check for person ID in query parameters
+      const searchParams = new URLSearchParams(window.location.search);
+      const queryPersonId = searchParams.get('personId');
+      const shouldViewPerson = searchParams.get('view') === 'true';
+      
+      if (!queryPersonId) return;
+      
+      console.log("Found person ID in URL:", queryPersonId, "Should view:", shouldViewPerson);
+      
       try {
-        setLoading(true);
-        const response = await fetchPeople();
-        setPeople(response.data);
-        setError(null);
-      } catch (err: any) {
-        console.error("Error fetching people:", err);
-        setError(err.message || "Failed to load people");
-      } finally {
-        setLoading(false);
+        // First check if person is already in the loaded data
+        if (people.length > 0) {
+          const person = people.find(p => p.id === queryPersonId);
+          if (person) {
+            console.log("Person found in already loaded data:", person.name);
+            setSelectedPerson(person);
+            return;
+          }
+        }
+        
+        // If not found in state or people not loaded yet, fetch directly
+        if (!loading || shouldViewPerson) {
+          console.log("Fetching person directly");
+          const person = await fetchPersonById(queryPersonId);
+          if (person) {
+            console.log("Person fetched successfully:", person.name);
+            setSelectedPerson(person);
+            
+            // Clean up the URL but maintain the personId
+            if (shouldViewPerson) {
+              const newUrl = `${window.location.pathname}?personId=${queryPersonId}`;
+              window.history.replaceState({}, '', newUrl);
+            }
+          } else {
+            console.error("Person not found with ID:", queryPersonId);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading person from URL:", error);
       }
     };
-
-    loadPeople();
-  }, []);
+    
+    handlePersonInUrl();
+  }, [people, loading]);
 
   // Handle person deleted
   const handlePersonDeleted = useCallback((id: string) => {
@@ -176,7 +227,7 @@ export default function PeoplePage() {
   };
 
   return (
-    <div className="container mx-auto py-8">
+    <div>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">People</h1>

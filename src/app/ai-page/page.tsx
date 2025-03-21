@@ -257,7 +257,7 @@ export default function AIPage() {
     return (
       <div 
         className="flex flex-col mt-2 mb-2 p-3 bg-indigo-50 dark:bg-indigo-950/20 rounded-md border border-indigo-200 dark:border-indigo-800 cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
-        onClick={() => router.push(`/documents-page?document=${docRef.id}`)}
+        onClick={() => router.push(`/documents-page?docId=${docRef.id}`)}
       >
         <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400 text-sm font-medium">
           <FileTextIcon className="h-4 w-4" />

@@ -2,49 +2,28 @@
 
 import "./globals.css";
 
-import React, { useState } from "react";
-import Layout from "pages/layout";
-import AIConversationsPage from "pages/ai-conversations-page";
-import AIPage from "pages/ai-page";
-import PropertiesPage from "pages/properties-page";
-import PeoplePage from "pages/people-page";
-import AccountPage from "pages/account-page";
-import DocumentsPage from "pages/documents-page";
+import React from "react";
 import { Analytics } from "@vercel/analytics/react"
+import { Sidebar } from "./(components)/sidebar";
 
-export default function App() {
-  const [currentPage, setCurrentPage] = useState<string>("ai-conversations");
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case "ai-conversations":
-        return <AIConversationsPage />;
-      case "ai":
-        return <AIPage />;
-      case "properties":
-        return <PropertiesPage />;
-      case "people":
-        return <PeoplePage />;
-      case "documents":
-        return <DocumentsPage />;
-      case "account":
-        return <AccountPage />;
-      default:
-        return <AIPage/>;
-    }
-  };
-
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-  <html lang="en">
-    <body>
-      <Layout
-      setCurrentPage={setCurrentPage}
-      currentPage={currentPage}
-    >
-      {renderPage()}
-    </Layout>
-    <Analytics />
-    </body>
-  </html>
-)
+    <html lang="en">
+      <body className="bg-gray-50 dark:bg-gray-900">
+        <div className="flex h-screen">
+          <Sidebar />
+          <div className="flex-1 overflow-auto p-6 md:p-8">
+            <main className="mx-auto max-w-7xl">
+              {children}
+            </main>
+          </div>
+        </div>
+        <Analytics />
+      </body>
+    </html>
+  );
 }

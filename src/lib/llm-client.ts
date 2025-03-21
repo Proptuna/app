@@ -157,7 +157,10 @@ export const generateChatCompletion = async (
       const documentContext = allDocuments.map(doc => {
         // Process the content to optimize for context
         const processedContent = processDocumentContent(doc);
-          
+        
+        // Ensure correct document URL format
+        const documentUrl = `/documents-page?docId=${doc.id}`;
+        
         return `--- DOCUMENT: ${doc.title} (ID: ${doc.id}) ---\n${processedContent}\n`;
       }).join('\n\n');
       
@@ -166,14 +169,14 @@ export const generateChatCompletion = async (
         ...messages.filter(msg => msg.role !== 'system' || !msg.content?.includes('DOCUMENT:')),
         {
           role: 'system',
-          content: `The following documents are available for reference. ALWAYS refer to documents by their ID in angle brackets (e.g., <${allDocuments[0].id}>) and provide clickable links to them using markdown format: [document title](/documents/document-id).
+          content: `The following documents are available for reference. ALWAYS refer to documents by their ID in angle brackets (e.g., <${allDocuments[0].id}>) and provide clickable links to them using markdown format: [document title](/documents-page?docId=${allDocuments[0].id}).
 
 IMPORTANT INSTRUCTIONS FOR DOCUMENT REFERENCES:
 1. When answering questions about specific information like phone numbers, policies, or procedures, ALWAYS check the documents below.
 2. When you find relevant information in a document, ALWAYS include the document reference in your response using BOTH formats:
    - Document ID in angle brackets: <doc-id>
-   - AND a markdown link: [document title](/documents/doc-id)
-3. Be specific about where you found the information by saying "According to <doc-id>" or "As mentioned in [document title](/documents/doc-id)".
+   - AND a markdown link pointing to the document: [document title](/documents-page?docId=doc-id)
+3. Be specific about where you found the information by saying "According to <doc-id>" or "As mentioned in [document title](/documents-page?docId=doc-id)".
 4. If multiple documents contain relevant information, reference ALL of them.
 5. If no documents contain the requested information, be honest and suggest that the information may not be available in the current document set.
 
@@ -249,7 +252,7 @@ ${documentContext}`,
               title: mostRelevantDoc.title,
               type: mostRelevantDoc.type,
               relevance: mostRelevantDoc.relevance,
-              url: `/documents/${mostRelevantDoc.id}`,
+              url: `/documents-page?docId=${mostRelevantDoc.id}`,
               visibility: mostRelevantDoc.visibility
             };
           }
@@ -267,7 +270,7 @@ ${documentContext}`,
               title: referencedDoc.title,
               type: referencedDoc.type,
               relevance: referencedDoc.relevance,
-              url: `/documents/${referencedDoc.id}`,
+              url: `/documents-page?docId=${referencedDoc.id}`,
               visibility: referencedDoc.visibility
             };
           }
@@ -301,7 +304,7 @@ ${documentContext}`,
           title: referencedDoc.title,
           type: referencedDoc.type,
           relevance: referencedDoc.relevance,
-          url: `/documents/${referencedDoc.id}`,
+          url: `/documents-page?docId=${referencedDoc.id}`,
           visibility: referencedDoc.visibility
         };
       }
@@ -322,7 +325,7 @@ ${documentContext}`,
             title: mostRelevantDoc.title,
             type: mostRelevantDoc.type,
             relevance: mostRelevantDoc.relevance,
-            url: `/documents/${mostRelevantDoc.id}`,
+            url: `/documents-page?docId=${mostRelevantDoc.id}`,
             visibility: mostRelevantDoc.visibility
           };
         }
@@ -375,7 +378,7 @@ export const fetchRelevantDocuments = async (
           visibility: document.visibility,
           metadata: document.metadata,
           associations: document.associations,
-          url: `/documents/${document.id}`
+          url: `/documents-page?docId=${document.id}` // Ensure correct URL format
         }];
       } catch (error) {
         console.error(`Error fetching document by ID ${documentId}:`, error);
@@ -403,7 +406,7 @@ export const fetchRelevantDocuments = async (
           visibility: doc.visibility,
           metadata: doc.metadata,
           associations: doc.associations,
-          url: `/documents/${doc.id}`
+          url: `/documents-page?docId=${doc.id}` // Ensure correct URL format
         }));
       } catch (error) {
         console.error('Error fetching all documents:', error);
@@ -431,7 +434,7 @@ export const fetchRelevantDocuments = async (
           visibility: doc.visibility,
           metadata: doc.metadata,
           associations: doc.associations,
-          url: `/documents/${doc.id}`
+          url: `/documents-page?docId=${doc.id}` // Ensure correct URL format
         }));
       } catch (error) {
         console.error(`Error searching documents with query "${query}":`, error);

@@ -77,32 +77,43 @@ async function processToolCall(name: string, args: any): Promise<any> {
   switch (name) {
     case 'searchDocuments':
       const { query, limit = 3 } = args;
-      // Fetch documents matching the query, but don't fetch all documents
-      const relevantDocs = await fetchRelevantDocuments(query, undefined, false);
-      
-      // Format the results for display
-      return relevantDocs.map(doc => {
-        // Create a content snippet for display
-        const contentSnippet = doc.content 
-          ? doc.content.substring(0, 200) + (doc.content.length > 200 ? '...' : '') 
-          : 'No content available';
-          
-        // Create a formatted reference with angle brackets and markdown link
-        const formattedReference = `<${doc.id}> [${doc.title}](/documents/${doc.id})`;
+      try {
+        // Fetch documents matching the query, but don't fetch all documents
+        const relevantDocs = await fetchRelevantDocuments(query, undefined, false);
         
+        // Format the results for display
+        return relevantDocs.map(doc => {
+          // Create a content snippet for display
+          const contentSnippet = doc.content 
+            ? doc.content.substring(0, 200) + (doc.content.length > 200 ? '...' : '') 
+            : 'No content available';
+          
+          // Generate the correct URL for the document
+          const documentUrl = `/documents-page?docId=${doc.id}`;
+            
+          // Create a formatted reference with angle brackets and markdown link
+          const formattedReference = `<${doc.id}> [${doc.title}](${documentUrl})`;
+          
+          return {
+            id: doc.id,
+            title: doc.title,
+            type: doc.type,
+            relevance: doc.relevance,
+            url: documentUrl,
+            contentSnippet,
+            visibility: doc.visibility,
+            reference: formattedReference,
+            formattedOutput: `**${doc.title}** (${doc.type})\nID: <${doc.id}>\nRelevance: ${doc.relevance}\n\n${contentSnippet}\n\n[View document](${documentUrl})`,
+            created_at: doc.created_at || 'unknown'
+          };
+        });
+      } catch (error: any) {
+        console.error(`Error searching documents:`, error);
         return {
-          id: doc.id,
-          title: doc.title,
-          type: doc.type,
-          relevance: doc.relevance,
-          url: `/documents/${doc.id}`,
-          contentSnippet,
-          visibility: doc.visibility,
-          reference: formattedReference,
-          formattedOutput: `**${doc.title}** (${doc.type})\nID: <${doc.id}>\nRelevance: ${doc.relevance}\n\n${contentSnippet}\n\n[View document](/documents/${doc.id})`,
-          created_at: doc.created_at || 'unknown'
+          error: error.message || `Failed to search documents`,
+          success: false
         };
-      });
+      }
     
     case 'createMaintenanceTask':
       const { description, property, priority = "medium", contactInfo } = args;
@@ -133,56 +144,75 @@ async function processToolCall(name: string, args: any): Promise<any> {
     case 'getDocumentById':
       const { documentId } = args;
       
-      // Fetch the document from Supabase via our document client
-      const documentResults = await fetchRelevantDocuments("", documentId, false);
-      
-      if (!documentResults || documentResults.length === 0) {
+      if (!documentId) {
         return {
-          error: `Document with ID ${documentId} not found`,
+          error: "Document ID is required",
           success: false
         };
       }
       
-      const document = documentResults[0];
-      
-      // Extract associations for display
-      const propertyAssociations = document.associations?.properties || [];
-      const personAssociations = document.associations?.people || [];
-      const tagAssociations = document.associations?.tags || [];
-      
-      // Create a formatted content snippet for preview
-      const contentSnippet = document.content 
-        ? document.content.substring(0, 300) + (document.content.length > 300 ? '...' : '')
-        : 'No content available';
+      try {
+        // Fetch the document from Supabase via our document client
+        const documentResults = await fetchRelevantDocuments("", documentId, false);
         
-      // Create a formatted reference with angle brackets and markdown link
-      const formattedReference = `<${document.id}> [${document.title}](/documents/${document.id})`;
+        if (!documentResults || documentResults.length === 0) {
+          console.error(`Could not find document with ID ${documentId}`);
+          return {
+            error: `Document with ID ${documentId} not found`,
+            success: false
+          };
+        }
         
-      return {
-        id: document.id,
-        title: document.title,
-        type: document.type,
-        content: document.content,
-        contentSnippet: contentSnippet,
-        created_at: document.created_at || 'unknown',
-        updated_at: document.updated_at || 'unknown',
-        visibility: document.visibility || 'unknown',
-        url: `/documents/${document.id}`,
-        associations: {
-          properties: propertyAssociations.length > 0 
-            ? propertyAssociations.map((p: { address?: string; id: string }) => `${p.address || p.id}`) 
-            : ['No associated properties'],
-          people: personAssociations.length > 0 
-            ? personAssociations.map((p: { name?: string; id: string; type?: string }) => `${p.name || p.id} (${p.type || 'unknown'})`) 
-            : ['No associated people'],
-          tags: tagAssociations.length > 0 
-            ? tagAssociations.map((t: { name: string }) => t.name) 
-            : ['No tags']
-        },
-        reference: formattedReference,
-        formattedOutput: `Document: **${document.title}** (${document.type})\n\nID: <${document.id}>\nVisibility: ${document.visibility || 'unknown'}\nCreated: ${document.created_at || 'unknown'}\n\n**Content:**\n${contentSnippet}\n\n**Reference:** [View full document](/documents/${document.id})`,
-        success: true
-      };
+        const document = documentResults[0];
+        
+        // Generate the correct URL for the document
+        const documentUrl = `/documents-page?docId=${document.id}`;
+        
+        // Extract associations for display
+        const propertyAssociations = document.associations?.properties || [];
+        const personAssociations = document.associations?.people || [];
+        const tagAssociations = document.associations?.tags || [];
+        
+        // Create a formatted content snippet for preview
+        const contentSnippet = document.content 
+          ? document.content.substring(0, 300) + (document.content.length > 300 ? '...' : '')
+          : 'No content available';
+          
+        // Create a formatted reference with angle brackets and markdown link
+        const formattedReference = `<${document.id}> [${document.title}](${documentUrl})`;
+          
+        return {
+          id: document.id,
+          title: document.title,
+          type: document.type,
+          content: document.content,
+          contentSnippet: contentSnippet,
+          created_at: document.created_at || 'unknown',
+          updated_at: document.updated_at || 'unknown',
+          visibility: document.visibility || 'unknown',
+          url: documentUrl,
+          associations: {
+            properties: propertyAssociations.length > 0 
+              ? propertyAssociations.map((p: { address?: string; id: string }) => `${p.address || p.id}`) 
+              : ['No associated properties'],
+            people: personAssociations.length > 0 
+              ? personAssociations.map((p: { name?: string; id: string; type?: string }) => `${p.name || p.id} (${p.type || 'unknown'})`) 
+              : ['No associated people'],
+            tags: tagAssociations.length > 0 
+              ? tagAssociations.map((t: { name: string }) => t.name) 
+              : ['No tags']
+          },
+          reference: formattedReference,
+          formattedOutput: `Document: **${document.title}** (${document.type})\n\nID: <${document.id}>\nVisibility: ${document.visibility || 'unknown'}\nCreated: ${document.created_at || 'unknown'}\n\n**Content:**\n${contentSnippet}\n\n**Reference:** [View full document](${documentUrl})`,
+          success: true
+        };
+      } catch (error: any) {
+        console.error(`Error fetching document with ID ${documentId}:`, error);
+        return {
+          error: error.message || `Failed to fetch document with ID ${documentId}`,
+          success: false
+        };
+      }
       
     default:
       throw new Error(`Unknown tool: ${name}`);
