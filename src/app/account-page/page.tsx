@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,7 +48,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-export default function AccountPage() {
+// Component to handle search params with Suspense
+function AccountPageContent() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("profile");
   const [showAddMemberDialog, setShowAddMemberDialog] = useState(false);
@@ -938,5 +939,14 @@ export default function AccountPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// Main component with Suspense
+export default function AccountPage() {
+  return (
+    <Suspense fallback={<div className="p-6">Loading account details...</div>}>
+      <AccountPageContent />
+    </Suspense>
   );
 }

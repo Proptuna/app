@@ -1,5 +1,5 @@
 {
-  "buildCommand": "next build",
+  "buildCommand": "node scripts/migrate-db.js && next build",
   "installCommand": "yarn install",
   "framework": "nextjs",
   "outputDirectory": ".next",
