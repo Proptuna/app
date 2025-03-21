@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentOrganizationId } from "@/lib/organization";
 import { removeDocumentTagAssociation } from "@/lib/documents";
 
 /**
@@ -11,9 +10,6 @@ export async function DELETE(
   { params }: { params: { id: string; tagId: string } }
 ) {
   const { id: documentId, tagId } = params;
-  
-  // In a real implementation, get organizationId from auth context
-  const organizationId = getCurrentOrganizationId();
   
   try {
     const result = await removeDocumentTagAssociation(

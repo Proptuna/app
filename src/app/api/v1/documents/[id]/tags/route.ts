@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentOrganizationId } from "@/lib/organization";
 import { associateDocumentWithTag } from "@/lib/documents";
 
 /**
@@ -22,9 +21,6 @@ export async function POST(
         { status: 400 }
       );
     }
-    
-    // In a real implementation, get organizationId from auth context
-    const organizationId = getCurrentOrganizationId();
     
     const association = await associateDocumentWithTag(
       documentId,
