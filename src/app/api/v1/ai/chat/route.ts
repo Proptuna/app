@@ -64,7 +64,20 @@ MAINTENANCE TASKS:
       // Generate completion
       const response = await generateChatCompletion(messagesWithSystem, options);
       
-      // Return the response
+      // Check if response is an array (multiple messages, e.g. for maintenance tasks)
+      if (Array.isArray(response)) {
+        // Return the first message with an indicator that there are follow-up messages
+        const mainResponse = response[0];
+        const hasFollowUps = response.length > 1;
+        
+        // Return the response with follow-up messages
+        return NextResponse.json({
+          ...mainResponse,
+          followUpMessages: hasFollowUps ? response.slice(1) : undefined
+        });
+      }
+      
+      // Return the single response message
       return NextResponse.json(response);
     } catch (error: any) {
       console.error("Error in AI chat route:", error);

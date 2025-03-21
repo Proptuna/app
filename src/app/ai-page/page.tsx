@@ -156,8 +156,26 @@ export default function AIPage() {
         // Send message to AI and get response
         const response = await sendMessageToAI([...messages, userMessage], options);
         
-        // Add AI response to the chat
-        setMessages(prevMessages => [...prevMessages, response]);
+        // Check if response includes follow-up messages
+        if ('followUpMessages' in response && response.followUpMessages) {
+          // Add both the main response and follow-up messages to the chat
+          const mainResponse = { ...response };
+          delete mainResponse.followUpMessages;
+          
+          // First add the main response
+          setMessages(prevMessages => [...prevMessages, mainResponse]);
+          
+          // Then add any follow-up messages after a short delay for better UX
+          setTimeout(() => {
+            setMessages(prevMessages => [
+              ...prevMessages, 
+              ...response.followUpMessages as Message[]
+            ]);
+          }, 500);
+        } else {
+          // Just add the single response
+          setMessages(prevMessages => [...prevMessages, response]);
+        }
       } catch (err: any) {
         console.error("Error sending message:", err);
         setError(err.message || "Failed to get a response. Please try again.");

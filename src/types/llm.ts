@@ -4,6 +4,7 @@ export interface Message {
   timestamp?: string;
   toolUse?: ToolUse | null;
   documentReference?: DocumentReference | null;
+  followUpMessages?: Message[];
 }
 
 export interface ToolUse {

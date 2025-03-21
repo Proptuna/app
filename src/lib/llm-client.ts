@@ -162,7 +162,7 @@ const processDocumentContent = (doc: DocumentReference): string => {
 export const generateChatCompletion = async (
   messages: Message[],
   options: ChatOptions = {}
-): Promise<Message> => {
+): Promise<Message | Message[]> => {
   // Ensure we have an API key
   const apiKey = process.env.OPEN_ROUTER_API_KEY;
   
@@ -220,35 +220,6 @@ ${documentContext}`,
     const payload: ChatCompletionRequest = {
       model: options.modelId || DEFAULT_MODEL,
       messages: [
-        // System prompt
-        {
-          role: "system" as const,
-          content: `You are an AI assistant for Proptuna, a property management platform.
-
-Your primary responsibilities include:
-1. Answering questions about properties, maintenance, and tenant concerns
-2. Helping users diagnose and troubleshoot maintenance issues
-3. Creating maintenance tasks when necessary
-4. Providing information from available documents when relevant`
-        },
-        // Tool usage instruction
-        {
-          role: "system" as const,
-          content: `CRITICAL TOOL USAGE INSTRUCTIONS:
-- NEVER output raw function call code like print(default_api.createMaintenanceTask()) or similar
-- Do not output Python, JavaScript, or any other programming language syntax
-- Use the provided createMaintenanceTask tool directly
-- For ANY maintenance issues, IMMEDIATELY use the createMaintenanceTask tool
-- If you see indications of floods, leaks, or emergencies along with an address and contact, use the tool immediately
-- In emergency situations, DO NOT respond conversationally without using the tool first
-- When creating a maintenance task, provide these parameters:
-  * property: The full property address
-  * contact: The name and phone number of the contact person
-  * description: Description of the maintenance issue
-  * priority: One of "emergency", "high", "medium", or "low"
-- The system will automatically process your tool call and generate a response
-- After using a tool, provide a helpful human-readable response to the user`
-        },
         // Document context if available
         ...(documentContextMessage ? [documentContextMessage] : []),
         // Previous conversation messages
@@ -413,81 +384,153 @@ Your primary responsibilities include:
       }
     }
     
-    // Check for maintenance task creation and request a follow-up response if needed
-    const processMaintenanceTaskResponse = async (toolUse: ToolUse, response: ChatCompletionResponse) => {
-      if (toolUse && toolUse.name === "createMaintenanceTask") {
-        // Always generate a follow-up response for maintenance tasks
-        // This ensures users get guidance even if the LLM doesn't provide follow-up content
-        const priority = toolUse.args.priority || "medium";
-        const isEmergency = priority === "emergency" || priority === "high";
-        
-        const followUpPrompt = {
-          role: "system" as const,
-          content: `The user reported a maintenance issue and you created a task with the following details:
+    // Process follow-up response for maintenance tasks if needed
+    let maintenanceFollowUp: Message | null = null;
+    
+    // Check if this was a maintenance task tool call
+    if (toolUse && toolUse.name === "createMaintenanceTask") {
+      // Generate follow-up guidance
+      const followUpContent = await processMaintenanceTaskResponse(toolUse, data);
+      
+      // Only create a separate follow-up message if we have content
+      if (followUpContent && followUpContent !== data.choices[0].message.content) {
+        maintenanceFollowUp = {
+          role: 'assistant',
+          content: followUpContent,
+          timestamp: new Date().toISOString(),
+        };
+      }
+    }
+    
+    // Process any raw function call syntax in the content
+    if (message.content) {
+      message.content = processResponseContent(message.content);
+    } else {
+      // Ensure content is never null
+      message.content = "";
+    }
+    
+    // Return both the original message and follow-up if we have one
+    if (maintenanceFollowUp) {
+      return [
+        {
+          role: "assistant" as const,
+          content: message.content,
+          timestamp: new Date().toISOString(),
+          toolUse,
+          documentReference
+        },
+        maintenanceFollowUp
+      ];
+    }
+    
+    // Return a single message if no follow-up
+    return {
+      role: "assistant" as const,
+      content: message.content,
+      timestamp: new Date().toISOString(),
+      toolUse,
+      documentReference
+    };
+  } catch (error) {
+    console.error("Error generating chat completion:", error);
+    throw error;
+  }
+};
+
+/**
+ * Generate a detailed follow-up response for maintenance tasks
+ * @param toolUse The maintenance task tool use
+ * @param response The original LLM response
+ * @returns A follow-up response with safety guidance and next steps
+ */
+const processMaintenanceTaskResponse = async (toolUse: ToolUse, response: ChatCompletionResponse): Promise<string> => {
+  if (!toolUse || toolUse.name !== "createMaintenanceTask") {
+    return response.choices[0].message.content || "";
+  }
+  
+  // Get maintenance task details
+  const priority = toolUse.args.priority || "medium";
+  const isEmergency = priority === "emergency" || priority === "high";
+  
+  // Use a hardcoded template for follow-up guidance
+  const followUpPrompt = `The user reported a maintenance issue and you created a task with the following details:
 Priority: ${priority}
 Description: ${toolUse.args.description || "not specified"}
 Property: ${toolUse.args.property || "not specified"}
 Contact: ${toolUse.args.contact || "not specified"}
 
-${isEmergency ? `This is an EMERGENCY situation that requires immediate attention and safety guidance.` : `This is a ${priority} priority issue.`}
+${isEmergency ? 
+  `This is an EMERGENCY situation that requires immediate attention and safety guidance.
+   
+Please provide:
+- Confirmation that the issue has been reported and a maintenance task created
+- Specific safety steps the user should take immediately
+- Troubleshooting guidance they can try while waiting for maintenance
+- Timeline for when they can expect assistance (within hours for emergencies)
+- Ask if there are other details they need help with` 
+  : 
+  `This is a ${priority} priority issue.
+   
+Please provide:
+- Confirmation that the maintenance request has been submitted
+- Explanation that the team will address it based on the priority level
+- Information about expected timeline (1-2 business days for medium, 3-5 business days for low)
+- Ask if there's anything specific they'd like to know about the issue`
+}
 
-Please generate a detailed and helpful response that includes:
-1. Confirmation that the issue has been reported and a maintenance task created
-2. Specific safety steps the user should take immediately (e.g., turn off water main for floods, electrical breaker for electrical issues)
-3. Troubleshooting guidance they can try while waiting for maintenance 
-4. Timeline for when they can expect assistance based on the priority
-5. Ask if there are other details they need help with
-
-Be empathetic, thorough, and focus on safety first. Provide step-by-step instructions for any emergency procedures.`
-        };
-        
-        // Generate a follow-up response
-        const followUpPayload = {
-          model: response.model,
-          messages: [
-            followUpPrompt,
-            { role: "user" as const, content: "I need detailed guidance for the maintenance task I just created." }
-          ],
-          max_tokens: 1500,
-          temperature: 0.7
-        };
-        
-        try {
-          const apiKey = process.env.OPEN_ROUTER_API_KEY;
-          const followUpResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify(followUpPayload)
-          });
-          
-          if (followUpResponse.ok) {
-            const followUpData = await followUpResponse.json() as ChatCompletionResponse;
-            if (followUpData.choices && followUpData.choices.length > 0) {
-              return followUpData.choices[0].message.content || generateFallbackResponse(toolUse);
-            }
-          }
-        } catch (error) {
-          console.error("Error generating follow-up response:", error);
-        }
-        
-        // Fallback response if API call fails
-        return generateFallbackResponse(toolUse);
+Be empathetic, thorough, and focus on safety first. Provide step-by-step instructions for any emergency procedures.`;
+  
+  // Generate a follow-up response
+  const followUpPayload = {
+    model: response.model,
+    messages: [
+      {
+        role: "system" as const,
+        content: followUpPrompt
+      },
+      { role: "user" as const, content: "I need detailed guidance for the maintenance task I just created." }
+    ],
+    max_tokens: 1500,
+    temperature: 0.7
+  };
+  
+  try {
+    const apiKey = process.env.OPEN_ROUTER_API_KEY;
+    const followUpResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(followUpPayload)
+    });
+    
+    if (followUpResponse.ok) {
+      const followUpData = await followUpResponse.json() as ChatCompletionResponse;
+      if (followUpData.choices && followUpData.choices.length > 0) {
+        return followUpData.choices[0].message.content || generateFallbackResponse(toolUse);
       }
-      
-      // Return original message content if not a maintenance task or if above logic didn't return
-      return response.choices[0].message.content;
-    };
+    }
+  } catch (error) {
+    console.error("Error generating follow-up response:", error);
+  }
+  
+  // Fallback response if API call fails
+  return generateFallbackResponse(toolUse);
+};
 
-    // Generate a fallback response based on task details
-    const generateFallbackResponse = (toolUse: ToolUse): string => {
-      const priority = toolUse.args.priority || "medium";
-      const isEmergency = priority === "emergency" || priority === "high";
-      
-      if (isEmergency) {
-        return `I've created an emergency maintenance task for this issue. Our team has been notified and will respond as quickly as possible.
+/**
+ * Generate a fallback response based on task details
+ * @param toolUse The maintenance task tool use
+ * @returns A fallback response with safety guidance based on priority
+ */
+const generateFallbackResponse = (toolUse: ToolUse): string => {
+  const priority = toolUse.args.priority || "medium";
+  const isEmergency = priority === "emergency" || priority === "high";
+  
+  if (isEmergency) {
+    return `I've created an emergency maintenance task for this issue. Our team has been notified and will respond as quickly as possible.
 
 In the meantime, here are some important safety steps:
 - If this is a water leak: Turn off the water main if you can locate it safely
@@ -496,26 +539,10 @@ In the meantime, here are some important safety steps:
 - For gas smell: Leave the area immediately and call emergency services (911)
 
 The property manager will be contacting you soon at the number you provided. Is there anything else you need help with or any other details I should add to the maintenance report?`;
-      } else {
-        return `Your maintenance request has been submitted successfully. Our team will address it based on the ${priority} priority level, typically within ${priority === "medium" ? "1-2 business days" : "3-5 business days"}.
+  } else {
+    return `Your maintenance request has been submitted successfully. Our team will address it based on the ${priority} priority level, typically within ${priority === "medium" ? "1-2 business days" : "3-5 business days"}.
 
 In the meantime, is there anything specific you'd like to know about the issue or any additional details you'd like to add to the maintenance report?`;
-      }
-    };
-    
-    // Create the final response object
-    const assistantMessage: Message = {
-      role: "assistant" as const,
-      content: processResponseContent(message.content || await processMaintenanceTaskResponse(toolUse as ToolUse, data) || ""),
-      timestamp: new Date().toISOString(),
-      toolUse,
-      documentReference
-    };
-    
-    return assistantMessage;
-  } catch (error) {
-    console.error("Error generating chat completion:", error);
-    throw error;
   }
 };
 
