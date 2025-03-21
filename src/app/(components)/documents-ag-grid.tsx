@@ -92,11 +92,11 @@ function TitleRenderer(params: ICellRendererParams) {
   const document = params.data;
   
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 w-full overflow-hidden">
       <div className="flex-shrink-0 w-9 h-9 bg-indigo-50 dark:bg-indigo-900/20 rounded-md flex items-center justify-center">
         <FileTextIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1 overflow-hidden">
         <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
           {document.title}
         </div>
@@ -114,26 +114,33 @@ function TypeBadgeRenderer(params: ICellRendererParams) {
   
   let badgeClass = "bg-gray-100 text-gray-800";
   let icon = <FileIcon className="h-3.5 w-3.5" />;
+  let displayText = type;
   
+  // TODO: Update the database schema to use more user-friendly document type names
+  // For now, we'll translate technical terms to user-friendly terms in the UI
   if (type === "markdown") {
     badgeClass = "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300";
     icon = <FileTextIcon className="h-3.5 w-3.5" />;
+    displayText = "Text";
   } else if (type === "pdf") {
     badgeClass = "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
     icon = <FileIcon className="h-3.5 w-3.5" />;
+    displayText = "PDF";
   } else if (type === "escalation-policy") {
     badgeClass = "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300";
     icon = <ShieldIcon className="h-3.5 w-3.5" />;
+    displayText = "Policy";
   } else if (type === "image") {
     badgeClass = "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
     icon = <FileIcon className="h-3.5 w-3.5" />;
+    displayText = "Image";
   }
   
   return (
     <div className="flex items-center">
-      <Badge variant="outline" className={`flex items-center gap-1.5 ${badgeClass} border-0 font-medium`}>
+      <Badge variant="outline" className={`flex items-center gap-1 ${badgeClass} border-0 font-medium text-xs px-2 py-1`}>
         {icon}
-        <span>{type}</span>
+        <span>{displayText}</span>
       </Badge>
     </div>
   );
@@ -382,40 +389,56 @@ export default function DocumentsAgGrid({
     setFilteredDocuments(documents);
   }, [documents]);
 
-  // Filter documents based on search text
-  useEffect(() => {
-    if (!quickFilterText.trim()) {
-      setFilteredDocuments(documents);
-      return;
-    }
+  // Custom filter for document type that handles the display text mapping
+  const typeFilter = (doc: Document, searchTerm: string): boolean => {
+    if (!doc.type) return false;
     
-    const searchTerm = quickFilterText.toLowerCase().trim();
-    const filtered = documents.filter(doc => {
+    // Check the actual type value
+    if (doc.type.toLowerCase().includes(searchTerm)) return true;
+    
+    // Check the display text mapping
+    const typeMap: Record<string, string> = {
+      'markdown': 'text',
+      'pdf': 'pdf',
+      'escalation-policy': 'policy',
+      'image': 'image'
+    };
+    
+    const displayText = typeMap[doc.type.toLowerCase()];
+    if (displayText && displayText.includes(searchTerm)) return true;
+    
+    return false;
+  };
+
+  // Apply quick filter to documents
+  const applyQuickFilter = useCallback((docs: Document[], searchTerm: string) => {
+    if (!searchTerm) return docs;
+    
+    searchTerm = searchTerm.toLowerCase().trim();
+    
+    return docs.filter(doc => {
       // Search in title
       if (doc.title.toLowerCase().includes(searchTerm)) return true;
       
-      // Search in type
-      if (doc.type.toLowerCase().includes(searchTerm)) return true;
+      // Search in type (using custom type filter)
+      if (typeFilter(doc, searchTerm)) return true;
       
       // Search in visibility
-      if (doc.visibility.toLowerCase().includes(searchTerm)) return true;
-      
-      // Search in document content
-      if (doc.data && doc.data.toLowerCase().includes(searchTerm)) return true;
+      if (doc.visibility?.toLowerCase().includes(searchTerm)) return true;
       
       // Search in associations
       if (doc.associations) {
-        // Search in properties
+        // Search in property addresses
         if (doc.associations.properties?.some(p => 
           p.address.toLowerCase().includes(searchTerm)
         )) return true;
         
-        // Search in people
+        // Search in people names
         if (doc.associations.people?.some(p => 
           p.name.toLowerCase().includes(searchTerm)
         )) return true;
         
-        // Search in groups
+        // Search in group names
         if (doc.associations.groups?.some(g => 
           g.name.toLowerCase().includes(searchTerm)
         )) return true;
@@ -428,10 +451,19 @@ export default function DocumentsAgGrid({
       
       return false;
     });
+  }, []);
+
+  // Filter documents based on search text
+  useEffect(() => {
+    if (!quickFilterText.trim()) {
+      setFilteredDocuments(documents);
+      return;
+    }
     
+    const filtered = applyQuickFilter(documents, quickFilterText);
     setFilteredDocuments(filtered);
-  }, [documents, quickFilterText]);
-  
+  }, [documents, quickFilterText, applyQuickFilter]);
+
   const onGridReady = useCallback((params: GridReadyEvent) => {
     setGridApi(params.api);
     // In newer versions of AG Grid, columnApi is accessed as a property of the api
@@ -491,6 +523,47 @@ export default function DocumentsAgGrid({
     };
   }, [gridApi]);
 
+  const getQuickFilterText = useCallback((data: Document) => {
+    const parts = [
+      data.title || '',
+      data.visibility || '',
+    ];
+    
+    // Add document type and its display name
+    if (data.type) {
+      parts.push(data.type);
+      
+      // Add display text for the type
+      const typeMap: Record<string, string> = {
+        'markdown': 'text',
+        'pdf': 'pdf',
+        'escalation-policy': 'policy',
+        'image': 'image'
+      };
+      
+      if (typeMap[data.type]) {
+        parts.push(typeMap[data.type]);
+      }
+    }
+    
+    // Add associations text
+    if (data.associations) {
+      const associations = data.associations;
+      const propertyAddresses = associations.properties?.map((p: any) => p.address).join(' ') || '';
+      const peopleNames = associations.people?.map((p: any) => p.name).join(' ') || '';
+      const groupNames = associations.groups?.map((g: any) => g.name).join(' ') || '';
+      const tagNames = associations.tags?.map((t: any) => t.name).join(' ') || '';
+      parts.push(`${propertyAddresses} ${peopleNames} ${groupNames} ${tagNames}`);
+    }
+    
+    // For data field, include the document content
+    if (data.data) {
+      parts.push(data.data);
+    }
+    
+    return parts.join(' ');
+  }, []);
+
   const columnDefs: ColDef[] = [
     {
       headerName: "Document",
@@ -499,7 +572,7 @@ export default function DocumentsAgGrid({
       sortable: true,
       filter: true,
       flex: 2,
-      minWidth: 200,
+      minWidth: 280,
       filterParams: {
         filterOptions: ['contains', 'startsWith', 'endsWith'],
         defaultOption: 'contains'
@@ -571,42 +644,10 @@ export default function DocumentsAgGrid({
     filter: true,
     filterParams: {
       buttons: ['reset', 'apply'],
-      closeOnApply: true
+      closeOnApply: true,
+      getQuickFilterText: getQuickFilterText
     },
-    getQuickFilterText: (params: any) => {
-      // For title field, include the title
-      if (params.colDef.field === 'title') {
-        return params.value;
-      }
-      
-      // For type field, include the type
-      if (params.colDef.field === 'type') {
-        return params.value;
-      }
-      
-      // For visibility field, include the visibility
-      if (params.colDef.field === 'visibility') {
-        return params.value;
-      }
-      
-      // For associations, include property addresses, people names, and group names
-      if (params.colDef.field === 'associations' && params.value) {
-        const associations = params.value;
-        const propertyAddresses = associations.properties?.map((p: any) => p.address).join(' ') || '';
-        const peopleNames = associations.people?.map((p: any) => p.name).join(' ') || '';
-        const groupNames = associations.groups?.map((g: any) => g.name).join(' ') || '';
-        const tagNames = associations.tags?.map((t: any) => t.name).join(' ') || '';
-        return `${propertyAddresses} ${peopleNames} ${groupNames} ${tagNames}`;
-      }
-      
-      // For data field, include the document content
-      if (params.data && params.data.data) {
-        return params.data.data;
-      }
-      
-      return '';
-    }
-  }), []);
+  }), [getQuickFilterText]);
 
   // Custom No Rows Overlay Component
   function NoRowsOverlay() {
@@ -644,7 +685,7 @@ export default function DocumentsAgGrid({
   }), [onDocumentDeleted, onDocumentView]);
 
   return (
-    <div className="ag-theme-custom w-full rounded-md overflow-hidden">
+    <div className="ag-theme-custom w-full rounded-md overflow-hidden shadow-sm border border-gray-200 dark:border-gray-700">
       <div className="p-4 border-b flex items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -775,7 +816,7 @@ export default function DocumentsAgGrid({
           loadingOverlayComponent={loadingOverlayComponent}
           context={context}
           rowSelection="single"
-          rowHeight={60}
+          rowHeight={64}
           suppressCellFocus={true}
           enableCellTextSelection={true}
           suppressRowClickSelection={true}

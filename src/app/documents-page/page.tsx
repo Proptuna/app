@@ -260,97 +260,99 @@ export default function DocumentsPage() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-          <div className="relative">
-            <div className={`transition-all duration-300 ${isViewingDocument ? 'translate-x-[-100%]' : 'translate-x-0'}`}>
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 p-6">
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
-                  <p className="text-muted-foreground">
-                    Manage your documents and policies
-                  </p>
-                </div>
-                <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="flex items-center gap-2">
-                      <Plus className="h-4 w-4" />
-                      Create Document
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Create New Document</DialogTitle>
-                    </DialogHeader>
-                    
-                    {createError && (
-                      <div className="bg-red-50 text-red-600 p-4 rounded-md mb-6 border border-red-200">
-                        {createError}
-                      </div>
-                    )}
-                    
-                    <Tabs defaultValue="markdown" onValueChange={setActiveTab} className="w-full">
-                      <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="markdown">Markdown Document</TabsTrigger>
-                        <TabsTrigger value="file">File Upload</TabsTrigger>
-                        <TabsTrigger value="escalation-policy">Escalation Policy</TabsTrigger>
-                      </TabsList>
+        <>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
+              <p className="text-muted-foreground">
+                Manage your documents and policies
+              </p>
+            </div>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create Document
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Create New Document</DialogTitle>
+                </DialogHeader>
+                
+                {createError && (
+                  <div className="bg-red-50 text-red-600 p-4 rounded-md mb-6 border border-red-200">
+                    {createError}
+                  </div>
+                )}
+                
+                <Tabs defaultValue="markdown" onValueChange={setActiveTab} className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="markdown">Markdown Document</TabsTrigger>
+                    <TabsTrigger value="file">File Upload</TabsTrigger>
+                    <TabsTrigger value="escalation-policy">Escalation Policy</TabsTrigger>
+                  </TabsList>
 
-                      <TabsContent value="markdown">
-                        <Suspense fallback={<FormLoader />}>
-                          {activeTab === "markdown" && (
-                            <DynamicMarkdownForm 
-                              onSubmit={handleCreateDocument} 
-                              isSubmitting={isSubmitting} 
-                            />
-                          )}
-                        </Suspense>
-                      </TabsContent>
-                      
-                      <TabsContent value="file">
-                        <Suspense fallback={<FormLoader />}>
-                          {activeTab === "file" && (
-                            <DynamicFileUploadForm 
-                              onSubmit={handleCreateDocument} 
-                              isSubmitting={isSubmitting} 
-                            />
-                          )}
-                        </Suspense>
-                      </TabsContent>
-                      
-                      <TabsContent value="escalation-policy">
-                        <Suspense fallback={<FormLoader />}>
-                          {activeTab === "escalation-policy" && (
-                            <DynamicEscalationForm 
-                              onSubmit={handleCreateDocument} 
-                              isSubmitting={isSubmitting} 
-                            />
-                          )}
-                        </Suspense>
-                      </TabsContent>
-                    </Tabs>
-                  </DialogContent>
-                </Dialog>
+                  <TabsContent value="markdown">
+                    <Suspense fallback={<FormLoader />}>
+                      {activeTab === "markdown" && (
+                        <DynamicMarkdownForm 
+                          onSubmit={handleCreateDocument} 
+                          isSubmitting={isSubmitting} 
+                        />
+                      )}
+                    </Suspense>
+                  </TabsContent>
+                  
+                  <TabsContent value="file">
+                    <Suspense fallback={<FormLoader />}>
+                      {activeTab === "file" && (
+                        <DynamicFileUploadForm 
+                          onSubmit={handleCreateDocument} 
+                          isSubmitting={isSubmitting} 
+                        />
+                      )}
+                    </Suspense>
+                  </TabsContent>
+                  
+                  <TabsContent value="escalation-policy">
+                    <Suspense fallback={<FormLoader />}>
+                      {activeTab === "escalation-policy" && (
+                        <DynamicEscalationForm 
+                          onSubmit={handleCreateDocument} 
+                          isSubmitting={isSubmitting} 
+                        />
+                      )}
+                    </Suspense>
+                  </TabsContent>
+                </Tabs>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+            <div className="relative">
+              <div className={`transition-all duration-300 ${isViewingDocument ? 'translate-x-[-100%]' : 'translate-x-0'}`}>
+                <DocumentsAgGrid 
+                  documents={documents}
+                  onDocumentDeleted={handleDocumentDeleted}
+                  onDocumentView={handleViewDocument}
+                  isLoading={isLoading}
+                />
               </div>
               
-              <DocumentsAgGrid
-                documents={documents}
-                onDocumentDeleted={handleDocumentDeleted}
-                onDocumentView={handleViewDocument}
-                isLoading={isLoading}
-              />
-            </div>
-            
-            <div className={`absolute top-0 left-0 w-full h-full transition-all duration-300 ${isViewingDocument ? 'translate-x-0' : 'translate-x-[100%]'}`}>
-              {selectedDocument && (
-                <DocumentViewer 
-                  document={selectedDocument} 
-                  onClose={handleCloseDocumentView}
-                  onDelete={handleDocumentDeleted}
-                />
-              )}
+              <div className={`absolute top-0 left-0 w-full h-full transition-all duration-300 ${isViewingDocument ? 'translate-x-0' : 'translate-x-[100%]'}`}>
+                {selectedDocument && (
+                  <DocumentViewer 
+                    document={selectedDocument} 
+                    onClose={handleCloseDocumentView}
+                    onDelete={handleDocumentDeleted}
+                  />
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
