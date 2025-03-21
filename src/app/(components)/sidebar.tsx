@@ -11,6 +11,8 @@ import {
   FileTextIcon,
   SettingsIcon,
   LogOutIcon,
+  BrainIcon,
+  SparklesIcon,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -54,11 +56,11 @@ export function Sidebar({
       <div 
         className={`flex items-center px-4 py-3 ${
           isActive(path) 
-            ? "bg-primary/10 text-primary font-medium" 
-            : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-        } rounded-md cursor-pointer transition-colors`}
+            ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-300 font-medium rounded-xl shadow-sm" 
+            : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800/60 rounded-xl"
+        } cursor-pointer transition-all duration-200 hover:shadow-sm`}
       >
-        <Icon className="h-5 w-5 mr-3" />
+        <Icon className={`h-5 w-5 mr-3 ${isActive(path) ? "text-indigo-500 dark:text-indigo-300" : ""}`} />
         <span>{label}</span>
       </div>
     </Link>
@@ -66,25 +68,36 @@ export function Sidebar({
 
   return (
     <div className="w-64 min-h-screen bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 flex flex-col">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-primary">Proptuna</h1>
+      <div className="mb-8 flex items-center py-2 px-1">
+        <div className="flex items-center">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-indigo-400 bg-clip-text text-transparent">Proptuna</h1>
+          <div className="ml-2 -mt-1">
+            <img 
+              src="/fish.svg" 
+              alt="Proptuna Logo" 
+              width="40" 
+              height="40" 
+              className="transform -rotate-12"
+            />
+          </div>
+        </div>
       </div>
 
-      <nav className="space-y-1 flex-1">
+      <nav className="space-y-2 flex-1">
+        <NavItem icon={SparklesIcon} path="/ai-page" label="AI" />
         <NavItem icon={MessageSquareIcon} path="/ai-conversations-page" label="AI Conversations" />
-        <NavItem icon={HomeIcon} path="/ai-page" label="AI" />
         <NavItem icon={BuildingIcon} path="/properties-page" label="Properties" />
         <NavItem icon={UserIcon} path="/people-page" label="People" />
         <NavItem icon={FileTextIcon} path="/documents-page" label="Documents" />
       </nav>
 
-      <div className="mt-auto pt-4 border-t border-gray-200 dark:border-gray-800">
+      <div className="mt-auto pt-4 border-t border-gray-200 dark:border-gray-700">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <div className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md">
-              <Avatar className="h-8 w-8 mr-2">
+            <div className="flex items-center px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/60 rounded-xl transition-all duration-200">
+              <Avatar className="h-8 w-8 mr-2 ring-2 ring-indigo-100 dark:ring-indigo-900">
                 <AvatarImage src={userProfile.imageUrl} alt={userProfile.name} />
-                <AvatarFallback>
+                <AvatarFallback className="bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-200">
                   {userProfile.name
                     .split(" ")
                     .map((n) => n[0])
@@ -99,15 +112,21 @@ export function Sidebar({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuItem asChild>
-              <Link href="/account-page" className="cursor-pointer">
-                <SettingsIcon className="h-4 w-4 mr-2" />
-                Account Settings
+              <Link href="/profile" className="flex cursor-pointer items-center">
+                <UserIcon className="mr-2 h-4 w-4 text-indigo-500" />
+                <span>Profile</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/settings" className="flex cursor-pointer items-center">
+                <SettingsIcon className="mr-2 h-4 w-4 text-indigo-500" />
+                <span>Settings</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onLogout}>
-              <LogOutIcon className="h-4 w-4 mr-2" />
-              Sign Out
+            <DropdownMenuItem className="text-red-500 focus:text-red-500" onClick={onLogout}>
+              <LogOutIcon className="mr-2 h-4 w-4" />
+              <span>Logout</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

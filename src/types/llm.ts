@@ -7,10 +7,33 @@ export interface Message {
 }
 
 export interface ToolUse {
-  toolName: string;
-  toolInput: any;
-  toolOutput?: any;
+  name: string;
+  args: any;
+  result?: any;
   status: 'started' | 'completed' | 'failed';
+  // Keep old fields for backward compatibility
+  toolName?: string;
+  toolInput?: any;
+  toolOutput?: any;
+}
+
+export interface MaintenanceTask {
+  property: string;
+  contact: string;
+  description: string;
+  priority: 'emergency' | 'high' | 'medium' | 'low';
+  status?: string;
+  id?: string;
+  created_at?: string;
+}
+
+export interface FollowUpRequest {
+  question: string;
+  reason: string;
+  contactInfo?: string;
+  id?: string;
+  status?: string;
+  created_at?: string;
 }
 
 export interface DocumentReference {
@@ -34,7 +57,7 @@ export interface ChatOptions {
   topP?: number;
   property?: string;
   person?: string;
-  createJob?: boolean;
+  createTask?: boolean;
 }
 
 export interface ChatCompletionRequest {

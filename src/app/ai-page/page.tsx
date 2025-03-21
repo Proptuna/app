@@ -33,11 +33,24 @@ import {
   ArrowRightIcon,
   HomeIcon,
   InfoIcon,
+  SlidersIcon,
+  PhoneIcon,
+  UserIcon,
+  CalendarIcon,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { sendMessageToAI } from "@/lib/llm-client";
-import { Message, ToolUse, DocumentReference, ChatOptions } from "@/types/llm";
+import { 
+  Message, 
+  ToolUse, 
+  DocumentReference, 
+  ChatOptions, 
+  MaintenanceTask,
+  FollowUpRequest
+} from "@/types/llm";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import ReactMarkdown from 'react-markdown';
 
 export default function AIPage() {
   const [messages, setMessages] = useState<Message[]>([
@@ -48,23 +61,24 @@ export default function AIPage() {
     },
   ]);
   const [inputMessage, setInputMessage] = useState("");
-  const [selectedProperty, setSelectedProperty] = useState("");
-  const [selectedPerson, setSelectedPerson] = useState("");
-  const [createJob, setCreateJob] = useState(true);
-  const [chatMode, setChatMode] = useState("chat");
-  const [showHistory, setShowHistory] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState("all");
+  const [selectedPerson, setSelectedPerson] = useState("all");
+  const [chatMode, setChatMode] = useState<"chat" | "voice">("chat");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [createTask, setCreateTask] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
 
   const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const properties = [
-    { id: "1", name: "Vista Ridge - Unit 1" },
-    { id: "2", name: "Vista Ridge - Unit 2" },
-    { id: "3", name: "935 Woodmoor" },
+    { id: "1", name: "Vista Ridge - Unit 1", address: "123 Main St" },
+    { id: "2", name: "Vista Ridge - Unit 2", address: "456 Elm St" },
+    { id: "3", name: "935 Woodmoor", address: "789 Oak St" },
   ];
 
   const people = [
@@ -134,9 +148,9 @@ export default function AIPage() {
       try {
         // Prepare chat options
         const options: ChatOptions = {
-          property: selectedProperty || undefined,
-          person: selectedPerson || undefined,
-          createJob,
+          property: selectedProperty === 'all' ? undefined : selectedProperty,
+          person: selectedPerson === 'all' ? undefined : selectedPerson,
+          createTask,
         };
 
         // Send message to AI and get response
@@ -212,76 +226,204 @@ export default function AIPage() {
     });
   };
 
-  // Render different types of visual indicators
+  // Improved tool use indicator with better formatting
   const renderToolUseIndicator = (toolUse: ToolUse) => {
+    if (!toolUse.name) return null;
+    
+    // For maintenance tasks, show a more user-friendly display
+    if (toolUse.name === "createMaintenanceTask") {
+      const task = toolUse.args as MaintenanceTask;
+      
+      const getPriorityColor = (priority: string) => {
+        switch(priority) {
+          case 'emergency': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+          case 'high': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
+          case 'medium': return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400';
+          case 'low': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+          default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+        }
+      };
+      
+      return (
+        <div className="mt-2 mb-2 p-3 bg-green-50 dark:bg-green-950/20 rounded-md border border-green-200 dark:border-green-800">
+          <div className="flex items-center gap-2 text-green-700 dark:text-green-400 text-sm font-medium">
+            <CheckCircleIcon className="h-4 w-4" />
+            <span>Maintenance task created successfully</span>
+            <Badge variant="outline" className={`ml-auto ${getPriorityColor(task.priority)}`}>
+              {task.priority || 'normal'} priority
+            </Badge>
+          </div>
+          
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <HomeIcon className="h-4 w-4" />
+              <span className="font-medium">Property:</span>
+              <span>{task.property || 'Not specified'}</span>
+            </div>
+            
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <UserIcon className="h-4 w-4" />
+              <span className="font-medium">Contact:</span>
+              <span>{task.contact || 'Not specified'}</span>
+            </div>
+            
+            <div className="col-span-1 md:col-span-2 flex items-start gap-2 text-gray-600 dark:text-gray-400 mt-1">
+              <AlertCircleIcon className="h-4 w-4 mt-0.5" />
+              <div>
+                <span className="font-medium">Issue:</span>
+                <p className="mt-1">{task.description}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-3 flex items-center gap-2 text-xs text-green-600 dark:text-green-500">
+            <CalendarIcon className="h-3 w-3" />
+            <span>Created: {new Date().toLocaleString()}</span>
+          </div>
+        </div>
+      );
+    }
+    
+    // For follow-up requests, show a friendly display
+    if (toolUse.name === "createFollowUp") {
+      const followUp = toolUse.args as FollowUpRequest;
+      
+      return (
+        <div className="mt-2 mb-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-md border border-blue-200 dark:border-blue-800">
+          <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 text-sm font-medium">
+            <InfoIcon className="h-4 w-4" />
+            <span>Follow-up request created</span>
+            <Badge variant="outline" className="ml-auto bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+              pending
+            </Badge>
+          </div>
+          
+          <div className="mt-3 space-y-2 text-sm">
+            <div className="flex items-start gap-2 text-gray-600 dark:text-gray-400">
+              <SearchIcon className="h-4 w-4 mt-0.5" />
+              <div>
+                <span className="font-medium">Question:</span>
+                <p className="mt-1">{followUp.question}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-2 text-gray-600 dark:text-gray-400">
+              <ArrowRightIcon className="h-4 w-4 mt-0.5" />
+              <div>
+                <span className="font-medium">Reason:</span>
+                <p className="mt-1">{followUp.reason}</p>
+              </div>
+            </div>
+            
+            {followUp.contactInfo && (
+              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                <PhoneIcon className="h-4 w-4" />
+                <span className="font-medium">Contact:</span>
+                <span>{followUp.contactInfo}</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="mt-3 flex items-center gap-2 text-xs text-blue-600 dark:text-blue-500">
+            <CalendarIcon className="h-3 w-3" />
+            <span>Created: {new Date().toLocaleString()}</span>
+          </div>
+        </div>
+      );
+    }
+    
+    // For other tools, show the standard display
     return (
-      <div className="flex flex-col mt-2 mb-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-md border border-amber-200 dark:border-amber-800">
-        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-sm font-medium mb-1">
+      <div className="mt-2 mb-2 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-md border border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">
           <WrenchIcon className="h-4 w-4" />
-          <span>Tool: {toolUse.toolName}</span>
+          <span>Using Tool: {toolUse.name}</span>
         </div>
-        <div className="text-xs text-amber-600 dark:text-amber-500 font-mono bg-amber-100 dark:bg-amber-900/30 p-2 rounded">
-          {JSON.stringify(toolUse.toolInput, null, 2)}
-        </div>
-        {toolUse.toolOutput && (
-          <div className="mt-2 text-xs text-green-600 dark:text-green-400 font-mono bg-green-50 dark:bg-green-900/30 p-2 rounded">
-            {JSON.stringify(toolUse.toolOutput, null, 2)}
+        {toolUse.args && (
+          <div className="rounded-md bg-gray-100 dark:bg-gray-800 p-2 overflow-x-auto">
+            <pre className="text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+              {JSON.stringify(toolUse.args, null, 2)}
+            </pre>
           </div>
         )}
-        <div className="flex items-center gap-2 mt-2 text-xs">
-          <Badge 
-            variant="outline" 
-            className={`${
-              toolUse.status === 'completed' 
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
-                : toolUse.status === 'failed'
-                ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-            }`}
-          >
-            {toolUse.status === 'completed' ? (
-              <CheckCircleIcon className="h-3 w-3 mr-1" />
-            ) : toolUse.status === 'failed' ? (
-              <AlertCircleIcon className="h-3 w-3 mr-1" />
-            ) : (
-              <ClockIcon className="h-3 w-3 mr-1" />
-            )}
-            {toolUse.status}
+      </div>
+    );
+  };
+
+  // Render document reference
+  const renderDocumentReference = (docRef: DocumentReference) => {
+    if (!docRef) return null;
+    
+    return (
+      <div 
+        className="mt-2 mb-2 p-3 bg-indigo-50 dark:bg-indigo-950/20 rounded-md border border-indigo-200 dark:border-indigo-800 cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+        onClick={() => router.push(docRef.url || `/documents-page?docId=${docRef.id}`)}
+      >
+        <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400 text-sm font-medium">
+          <FileTextIcon className="h-4 w-4" />
+          <span>{docRef.title}</span>
+          <Badge variant="outline" className="ml-2 bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400">
+            {docRef.id.startsWith('doc-') ? docRef.id : `doc-${docRef.id}`}
           </Badge>
+          {docRef.relevance && (
+            <Badge 
+              variant="outline" 
+              className={`ml-auto ${
+                docRef.relevance === 'high' 
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                  : docRef.relevance === 'medium'
+                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+                  : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+              }`}
+            >
+              {docRef.relevance} relevance
+            </Badge>
+          )}
+        </div>
+        <div className="mt-1 text-xs text-indigo-500 dark:text-indigo-400 flex items-center">
+          <span>View document</span>
+          <ArrowRightIcon className="h-3 w-3 ml-1" />
         </div>
       </div>
     );
   };
 
-  const renderDocumentReference = (docRef: DocumentReference) => {
-    return (
-      <div 
-        className="flex flex-col mt-2 mb-2 p-3 bg-indigo-50 dark:bg-indigo-950/20 rounded-md border border-indigo-200 dark:border-indigo-800 cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
-        onClick={() => router.push(`/documents-page?docId=${docRef.id}`)}
-      >
-        <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400 text-sm font-medium">
-          <FileTextIcon className="h-4 w-4" />
-          <span>Referenced Document</span>
-          <Badge 
-            variant="outline" 
-            className={`ml-auto ${
-              docRef.relevance === 'high' 
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
-                : docRef.relevance === 'medium'
-                ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
-                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-            }`}
-          >
-            {docRef.relevance} relevance
-          </Badge>
-        </div>
-        <div className="mt-1 text-sm text-indigo-600 dark:text-indigo-300 flex items-center">
-          <span className="font-medium">{docRef.title}</span>
-          <ArrowRightIcon className="h-3 w-3 mx-1" />
-          <span className="text-xs text-indigo-500 dark:text-indigo-400">View document</span>
-        </div>
-      </div>
-    );
+  // Format the chat message content, handling document references and links
+  const formatMessageContent = (content: string) => {
+    if (!content) return "";
+    
+    // Replace document ID references with styled spans
+    let formattedContent = content.replace(/<(doc-[^>]+)>/g, (match, docId) => {
+      return `<span class="bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400 px-1 rounded-sm font-mono text-xs">${docId}</span>`;
+    });
+    
+    // Replace markdown document links with Next.js Links
+    // [Document Title](/documents-page?docId=123) format
+    formattedContent = formattedContent.replace(/\[([^\]]+)\]\(\/documents-page\?docId=([^)]+)\)/g, (match, title, docId) => {
+      return `<a href="/documents-page?docId=${docId}" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 underline">${title}</a>`;
+    });
+    
+    // Handle markdown bold formatting (**text**)
+    formattedContent = formattedContent.replace(/\*\*([^*]+)\*\*/g, (match, text) => {
+      return `<strong>${text}</strong>`;
+    });
+    
+    // Handle markdown headers (## Heading)
+    formattedContent = formattedContent.replace(/^##\s+(.+)$/gm, (match, text) => {
+      return `<h2 class="text-lg font-bold mt-3 mb-2">${text}</h2>`;
+    });
+    
+    // Handle markdown lists (- item)
+    formattedContent = formattedContent.replace(/^-\s+(.+)$/gm, (match, text) => {
+      return `<li class="ml-4">• ${text}</li>`;
+    });
+    
+    // Wrap lists in ul tags
+    formattedContent = formattedContent.replace(/<li class="ml-4">(.+)<\/li>\n<li class="ml-4">(.+)<\/li>/g, (match) => {
+      return `<ul class="my-2">${match}</ul>`;
+    });
+    
+    return formattedContent;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -386,77 +528,6 @@ export default function AIPage() {
         {/* Main chat area */}
         <div className={`${showHistory ? "md:col-span-9" : "md:col-span-12"}`}>
           <Card className="h-[75vh] flex flex-col">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Tabs
-                    value={chatMode}
-                    onValueChange={setChatMode}
-                    className="w-[200px]"
-                  >
-                    <TabsList className="w-full">
-                      <TabsTrigger value="chat" className="flex-1">
-                        <MessageSquareIcon className="h-4 w-4 mr-2" />
-                        Chat
-                      </TabsTrigger>
-                      <TabsTrigger value="voice" className="flex-1">
-                        <VolumeIcon className="h-4 w-4 mr-2" />
-                        Voice
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <Select
-                      value={selectedProperty}
-                      onValueChange={setSelectedProperty}
-                    >
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Select property" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {properties.map((property) => (
-                          <SelectItem key={property.id} value={property.id}>
-                            {property.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Select
-                      value={selectedPerson}
-                      onValueChange={setSelectedPerson}
-                    >
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Select person" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {people.map((person) => (
-                          <SelectItem key={person.id} value={person.id}>
-                            {person.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="create-job"
-                      checked={createJob}
-                      onCheckedChange={setCreateJob}
-                    />
-                    <label
-                      htmlFor="create-job"
-                      className="text-sm font-medium cursor-pointer select-none"
-                    >
-                      Create Job
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </CardHeader>
             <CardContent className="flex-grow overflow-hidden p-0 relative">
               {/* Chat messages */}
               <div
@@ -480,15 +551,23 @@ export default function AIPage() {
                           message.role === "user" ? "items-end" : "items-start"
                         }`}
                       >
-                        <div
-                          className={`rounded-lg px-4 py-3 ${
-                            message.role === "user"
-                              ? "bg-indigo-600 text-white"
-                              : "bg-gray-100 dark:bg-gray-800"
-                          }`}
-                        >
-                          <div className="text-sm whitespace-pre-wrap">{message.content}</div>
-                        </div>
+                        {/* Message content with Markdown support */}
+                        {message.content && (
+                          <div 
+                            className={`rounded-lg px-4 py-3 ${
+                              message.role === "user"
+                                ? "bg-indigo-600 text-white prose-invert"
+                                : "bg-gray-100 dark:bg-gray-800"
+                            }`}
+                          >
+                            <div 
+                              className="prose dark:prose-invert max-w-none" 
+                              dangerouslySetInnerHTML={{ 
+                                __html: formatMessageContent(message.content) 
+                              }} 
+                            />
+                          </div>
+                        )}
                         
                         {/* Show tool use indicator if present */}
                         {message.toolUse && message.role === "assistant" && renderToolUseIndicator(message.toolUse)}
@@ -537,46 +616,146 @@ export default function AIPage() {
                 <div ref={messagesEndRef} />
               </div>
             </CardContent>
-            <div className="p-4 border-t">
-              {chatMode === "chat" ? (
-                <div className="flex items-start gap-2">
-                  <Input
-                    placeholder="Type your message..."
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    className="flex-grow"
-                    disabled={isLoading}
-                  />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={isLoading || !inputMessage.trim()}
-                    className={`${
-                      !inputMessage.trim() ? "opacity-70" : ""
-                    } bg-indigo-600 hover:bg-indigo-700 text-white`}
-                  >
-                    <SendIcon className="h-4 w-4" />
-                  </Button>
+            <div className="p-4 border-t relative">
+              {/* Options drawer - integrated with the input area */}
+              <div className={`transition-all duration-300 ease-in-out ${drawerOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                <div className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-800/50 mb-2">
+                  <div className="flex flex-wrap gap-4">
+                    <div className="w-full mb-2">
+                      <h3 className="text-sm font-medium mb-1">Chat Mode</h3>
+                      <Tabs
+                        value={chatMode}
+                        onValueChange={(value) => setChatMode(value as "chat" | "voice")}
+                        className="w-full"
+                      >
+                        <TabsList className="w-full">
+                          <TabsTrigger value="chat" className="flex-1">
+                            <MessageSquareIcon className="h-4 w-4 mr-2" />
+                            Text Chat
+                          </TabsTrigger>
+                          <TabsTrigger value="voice" className="flex-1">
+                            <VolumeIcon className="h-4 w-4 mr-2" />
+                            Voice Chat
+                          </TabsTrigger>
+                        </TabsList>
+                      </Tabs>
+                    </div>
+                    
+                    <div className="flex-1 min-w-[200px]">
+                      <h3 className="text-sm font-medium mb-1">Property Filter</h3>
+                      <Select 
+                        value={selectedProperty} 
+                        onValueChange={setSelectedProperty}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select property" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Any property</SelectItem>
+                          {properties.map((property) => (
+                            <SelectItem key={property.id} value={property.id}>
+                              {property.address}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="flex-1 min-w-[200px]">
+                      <h3 className="text-sm font-medium mb-1">Person Filter</h3>
+                      <Select 
+                        value={selectedPerson} 
+                        onValueChange={setSelectedPerson}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select person" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Any person</SelectItem>
+                          {people.map((person) => (
+                            <SelectItem key={person.id} value={person.id}>
+                              {person.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="w-full">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-sm font-medium">Task Creation</h3>
+                          <p className="text-xs text-muted-foreground">Allow AI to create maintenance tasks</p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="create-task"
+                            checked={createTask}
+                            onCheckedChange={setCreateTask}
+                          />
+                          <label
+                            htmlFor="create-task"
+                            className="text-sm font-medium cursor-pointer select-none"
+                          >
+                            {createTask ? 'Enabled' : 'Disabled'}
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <div className="flex justify-center">
-                  <Button
-                    onClick={toggleRecording}
-                    className={`rounded-full w-12 h-12 flex items-center justify-center ${
-                      isRecording
-                        ? "bg-red-600 hover:bg-red-700"
-                        : "bg-indigo-600 hover:bg-indigo-700"
-                    }`}
-                    disabled={isLoading}
-                  >
-                    <MicIcon className="h-5 w-5 text-white" />
-                  </Button>
-                  {isRecording && <span className="ml-3 text-sm">Listening...</span>}
+              </div>
+              
+              <div className="flex items-center">
+                {/* Chat input with integrated options button */}
+                <div className="flex w-full items-center gap-2">
+                  {chatMode === "chat" ? (
+                    <>
+                      <div className="flex-grow relative rounded-md shadow-sm">
+                        <Input
+                          placeholder="Type your message..."
+                          value={inputMessage}
+                          onChange={(e) => setInputMessage(e.target.value)}
+                          onKeyDown={handleKeyDown}
+                          className="pr-10"
+                          disabled={isLoading}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDrawerOpen(!drawerOpen)}
+                          className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                          type="button"
+                        >
+                          <SlidersIcon className={`h-4 w-4 transition-transform ${drawerOpen ? 'rotate-180' : ''}`} />
+                        </Button>
+                      </div>
+                      <Button
+                        onClick={handleSendMessage}
+                        className="bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700 h-10 w-10 flex-shrink-0"
+                        disabled={isLoading || !inputMessage.trim()}
+                        type="submit"
+                      >
+                        <SendIcon className="h-4 w-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="flex justify-center">
+                      <Button
+                        onClick={toggleRecording}
+                        className={`rounded-full w-12 h-12 flex items-center justify-center ${
+                          isRecording
+                            ? "bg-red-600 hover:bg-red-700"
+                            : "bg-indigo-600 hover:bg-indigo-700"
+                        }`}
+                        disabled={isLoading}
+                      >
+                        <MicIcon className="h-5 w-5 text-white" />
+                      </Button>
+                      {isRecording && <span className="ml-3 text-sm">Listening...</span>}
+                    </div>
+                  )}
                 </div>
-              )}
-              <div className="text-xs text-center mt-2 text-gray-500">
-                <InfoIcon className="inline h-3 w-3 mr-1" />
-                Chat messages are used to improve the AI assistant.
               </div>
             </div>
           </Card>

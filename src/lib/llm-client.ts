@@ -1,11 +1,12 @@
 import { 
   ChatOptions, 
   ChatCompletionRequest, 
-  ChatCompletionResponse, 
+  ChatCompletionResponse,
   Message,
-  DocumentReference,
-  ToolUse
+  ToolUse,
+  DocumentReference
 } from "@/types/llm";
+import { agentPrompt } from "../prompts/agent.prompt";
 
 // OpenRouter models
 const MODELS = {
@@ -23,29 +24,54 @@ const TOOLS = [
     type: "function",
     function: {
       name: "createMaintenanceTask",
-      description: "Create a maintenance task for a property",
+      description: "Create a maintenance task for a property. Use this after confirming address and contact details for ANY maintenance issue.",
       parameters: {
         type: "object",
         properties: {
           description: {
             type: "string",
-            description: "Description of the maintenance issue"
+            description: "Detailed description of the maintenance issue including location, severity, when it started, and any troubleshooting already attempted"
           },
           property: {
             type: "string",
-            description: "ID or name of the property"
+            description: "Complete address of the property with unit/apartment number if applicable"
           },
           priority: {
             type: "string",
             enum: ["low", "medium", "high", "emergency"],
-            description: "Priority level of the task"
+            description: "Priority level of the task: emergency (life/safety issues, floods, fire); high (HVAC failure, major appliance issues); medium (minor repairs); low (cosmetic issues)"
+          },
+          contact: {
+            type: "string",
+            description: "Full contact information including name and phone number of the person reporting the issue"
+          }
+        },
+        required: ["description", "property", "priority", "contact"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "createFollowUp",
+      description: "Use this tool when you cannot answer the user's question with the available information. This will create a follow-up task to find the answer and get back to the user later.",
+      parameters: {
+        type: "object",
+        properties: {
+          question: {
+            type: "string",
+            description: "The original question the user asked that you cannot answer"
+          },
+          reason: {
+            type: "string",
+            description: "Brief explanation of why you cannot answer (missing information, outside scope, needs research, etc.)"
           },
           contactInfo: {
             type: "string",
-            description: "Contact information for follow-up"
+            description: "Contact information for follow-up (if provided by user)"
           }
         },
-        required: ["description", "property"]
+        required: ["question", "reason"]
       }
     }
   },
@@ -151,6 +177,19 @@ export const generateChatCompletion = async (
     const allDocuments = await fetchRelevantDocuments("", undefined, true);
     console.log(`Loaded ${allDocuments.length} documents for context`);
     
+    // Use the imported agent prompt
+    let promptContent = agentPrompt;
+    if (!promptContent) {
+      // Fallback if import fails
+      promptContent = `You are an AI assistant for Proptuna, a property management platform.
+
+Your primary responsibilities include:
+1. Answering questions about properties, maintenance, and tenant concerns
+2. Helping users diagnose and troubleshoot maintenance issues
+3. Creating maintenance tasks when necessary
+4. Providing information from available documents when relevant`;
+    }
+    
     // If we found documents, add a system message with their content
     if (allDocuments.length > 0) {
       // Prepare document content for context, limiting per document to avoid token overflow
@@ -169,18 +208,9 @@ export const generateChatCompletion = async (
         ...messages.filter(msg => msg.role !== 'system' || !msg.content?.includes('DOCUMENT:')),
         {
           role: 'system',
-          content: `The following documents are available for reference. ALWAYS refer to documents by their ID in angle brackets (e.g., <${allDocuments[0].id}>) and provide clickable links to them using markdown format: [document title](/documents-page?docId=${allDocuments[0].id}).
+          content: `${promptContent}
 
-IMPORTANT INSTRUCTIONS FOR DOCUMENT REFERENCES:
-1. When answering questions about specific information like phone numbers, policies, or procedures, ALWAYS check the documents below.
-2. When you find relevant information in a document, ALWAYS include the document reference in your response using BOTH formats:
-   - Document ID in angle brackets: <doc-id>
-   - AND a markdown link pointing to the document: [document title](/documents-page?docId=doc-id)
-3. Be specific about where you found the information by saying "According to <doc-id>" or "As mentioned in [document title](/documents-page?docId=doc-id)".
-4. If multiple documents contain relevant information, reference ALL of them.
-5. If no documents contain the requested information, be honest and suggest that the information may not be available in the current document set.
-
-DOCUMENTS AVAILABLE:
+## Available Documents
 ${documentContext}`,
           timestamp: new Date().toISOString()
         }
@@ -277,8 +307,10 @@ ${documentContext}`,
         }
         
         toolUse = {
-          toolName: toolCall.function.name,
-          toolInput: args,
+          name: toolCall.function.name,
+          args: args,
+          toolName: toolCall.function.name, // For backward compatibility
+          toolInput: args, // For backward compatibility
           status: 'started' as const
         };
       } catch (error) {
@@ -287,58 +319,139 @@ ${documentContext}`,
     }
     
     // Check for document references in the content
-    const docRefRegex = /<([^>]+)>/g;
+    const docRefRegex = /<(doc-[^>]+)>/g;
     let docRefs = message.content ? message.content.match(docRefRegex) : null;
     
-    if (docRefs && docRefs.length > 0 && !documentReference) {
-      const firstDocId = docRefs[0].replace(/<|>/g, '').trim();
+    // Process document references but keep them in the content for better display
+    if (docRefs && docRefs.length > 0) {
+      // Get the first document reference
+      const docId = docRefs[0].replace(/[<>]/g, '');
+      const cleanDocId = docId.replace(/^doc-/, ''); // Remove 'doc-' prefix for lookup
       
-      // Fetch the referenced document
-      const referencedDocs = await fetchRelevantDocuments("", firstDocId);
-      
-      if (referencedDocs && referencedDocs.length > 0) {
-        const referencedDoc = referencedDocs[0];
+      try {
+        // Fetch the document directly by ID
+        const fetchedDocs = await fetchRelevantDocuments("", cleanDocId);
         
-        documentReference = {
-          id: referencedDoc.id,
-          title: referencedDoc.title,
-          type: referencedDoc.type,
-          relevance: referencedDoc.relevance,
-          url: `/documents-page?docId=${referencedDoc.id}`,
-          visibility: referencedDoc.visibility
-        };
-      }
-    } 
-    
-    // If no document reference is found, try a broader search
-    if (!documentReference) {
-      const lastUserMessage = messages.filter(m => m.role === 'user').pop();
-      if (lastUserMessage) {
-        const userQuery = lastUserMessage.content;
-        const mostRelevantDocs = await fetchRelevantDocuments(userQuery);
-        
-        if (mostRelevantDocs && mostRelevantDocs.length > 0) {
-          const mostRelevantDoc = mostRelevantDocs[0];
+        if (fetchedDocs && fetchedDocs.length > 0) {
+          const referencedDoc = fetchedDocs[0];
           
+          // If document reference exists, set it as a separate entity
           documentReference = {
-            id: mostRelevantDoc.id,
-            title: mostRelevantDoc.title,
-            type: mostRelevantDoc.type,
-            relevance: mostRelevantDoc.relevance,
-            url: `/documents-page?docId=${mostRelevantDoc.id}`,
-            visibility: mostRelevantDoc.visibility
+            id: referencedDoc.id,
+            title: referencedDoc.title || 'Unknown Document',
+            type: referencedDoc.type || 'document',
+            relevance: 'high',      // Direct ID lookup is highly relevant
+            url: `/documents-page?docId=${referencedDoc.id}` // Ensure correct URL format
           };
+          
+          // Don't remove document references from content
+          // This ensures the LLM's formatting with document links is preserved
+        }
+      } catch (error) {
+        console.error("Error fetching referenced document:", error);
+      }
+    } else {
+      // If no explicit doc ref is found, check for markdown links to documents
+      const linkRegex = /\[([^\]]+)\]\(\/documents-page\?docId=([^)]+)\)/g;
+      const linkMatches = message.content ? Array.from(message.content.matchAll(linkRegex)) : [];
+      
+      if (linkMatches.length > 0) {
+        const [_, title, docId] = linkMatches[0];
+        const cleanDocId = docId.replace(/^doc-/, ''); // Remove 'doc-' prefix if present
+        
+        try {
+          // Fetch the document directly by ID
+          const fetchedDocs = await fetchRelevantDocuments("", cleanDocId);
+          
+          if (fetchedDocs && fetchedDocs.length > 0) {
+            const referencedDoc = fetchedDocs[0];
+            
+            // If document reference exists, set it as a separate entity
+            documentReference = {
+              id: referencedDoc.id,
+              title: referencedDoc.title || title,
+              type: referencedDoc.type || 'document',
+              relevance: 'high',
+              url: `/documents-page?docId=${referencedDoc.id}`
+            };
+          }
+        } catch (error) {
+          console.error("Error fetching referenced document:", error);
         }
       }
     }
     
-    return {
-      role: 'assistant',
-      content: message.content || '',
+    // Check for maintenance task creation and request a follow-up response if needed
+    const processMaintenanceTaskResponse = async (toolUse: ToolUse, response: ChatCompletionResponse) => {
+      if (toolUse.name === "createMaintenanceTask" && response.choices[0].message.content === null) {
+        // The AI didn't provide a follow-up response after creating the task
+        // Let's generate one
+        const followUpPrompt = {
+          role: "system",
+          content: `The user reported a maintenance issue and you created a task with the following details:
+Priority: ${toolUse.args.priority || "not specified"}
+Description: ${toolUse.args.description || "not specified"}
+Property: ${toolUse.args.property || "not specified"}
+
+Please generate a helpful response confirming the maintenance task was created. Include:
+1. Confirmation that the issue has been reported
+2. Next steps the user should take (if any)
+3. Expected timeline for resolution based on priority
+4. Any safety precautions if relevant (e.g., turn off water main for floods)
+5. Ask if there's anything else they need help with
+
+Be empathetic and reassuring, especially for emergency or high-priority issues.`
+        };
+        
+        // Generate a follow-up response
+        const followUpPayload = {
+          model: response.model,
+          messages: [
+            followUpPrompt,
+            { role: "user", content: "I need a response for the maintenance task I just created." }
+          ],
+          max_tokens: 1000,
+          temperature: 0.7
+        };
+        
+        try {
+          const apiKey = process.env.OPEN_ROUTER_API_KEY;
+          const followUpResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify(followUpPayload)
+          });
+          
+          if (followUpResponse.ok) {
+            const followUpData = await followUpResponse.json() as ChatCompletionResponse;
+            if (followUpData.choices && followUpData.choices.length > 0) {
+              return followUpData.choices[0].message.content || "Your maintenance request has been submitted successfully.";
+            }
+          }
+        } catch (error) {
+          console.error("Error generating follow-up response:", error);
+        }
+        
+        // Fallback response if API call fails
+        return "Your maintenance request has been submitted successfully. Our team will address it based on the priority level. Is there anything else you need help with?";
+      }
+      
+      return response.choices[0].message.content;
+    };
+
+    // Create the final response object
+    const assistantMessage: Message = {
+      role: "assistant",
+      content: message.content || await processMaintenanceTaskResponse(toolUse as ToolUse, data) || "",
       timestamp: new Date().toISOString(),
       toolUse,
       documentReference
     };
+    
+    return assistantMessage;
   } catch (error) {
     console.error("Error generating chat completion:", error);
     throw error;
