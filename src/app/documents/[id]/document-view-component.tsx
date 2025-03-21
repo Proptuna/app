@@ -19,7 +19,7 @@ import {
 interface Associations {
   properties?: { address?: string; id?: string }[];
   people?: { name?: string; id?: string }[];
-  groups?: { name?: string; id?: string }[];
+  tags?: { name?: string; id?: string }[];
 }
 
 interface DocumentViewComponentProps {
@@ -94,8 +94,18 @@ export default function DocumentViewComponent({ document, onClose, onDelete }: D
   };
 
   return (
-    <div className="flex flex-col max-h-[90vh]">
-      <div className="mb-6 flex items-center justify-end">
+    <div className="flex flex-col h-full">
+      <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onClose}
+          className="flex items-center gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Documents
+        </Button>
+        
         {document && (
           <div className="flex items-center gap-2">
             <Button
@@ -121,81 +131,79 @@ export default function DocumentViewComponent({ document, onClose, onDelete }: D
       </div>
 
       {/* Document content */}
-      <div className="bg-white rounded-lg border overflow-hidden flex-1">
-        <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 150px)' }}>
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold">{document.title}</h1>
-            <Badge variant="outline">{document.type}</Badge>
-          </div>
-          <div className="text-sm text-gray-500 mb-4">
-            <p>Created: {formatDate(document.created_at)}</p>
-            <p>Last Updated: {formatDate(document.updated_at)}</p>
-          </div>
-          <div className="prose dark:prose-invert max-w-none">
-            {document.type === "markdown" ? (
-              <div className="whitespace-pre-wrap">{document.data}</div>
-            ) : (
-              <div className="flex items-center justify-center p-12 border-2 border-dashed rounded-lg">
-                <div className="text-center">
-                  <FileText className="h-12 w-12 mx-auto text-gray-400" />
-                  <p className="mt-2 text-sm text-gray-500">
-                    This document type cannot be previewed directly.
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDownload}
-                    className="mt-4"
-                  >
-                    Download to View
-                  </Button>
+      <div className="bg-white dark:bg-gray-800 overflow-hidden flex-1 p-6 overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold">{document.title}</h1>
+          <Badge variant="outline">{document.type}</Badge>
+        </div>
+        <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          <p>Created: {formatDate(document.created_at)}</p>
+          <p>Last Updated: {formatDate(document.updated_at)}</p>
+        </div>
+        <div className="prose dark:prose-invert max-w-none">
+          {document.type === "markdown" ? (
+            <div className="whitespace-pre-wrap">{document.data}</div>
+          ) : (
+            <div className="flex items-center justify-center p-12 border-2 border-dashed rounded-lg">
+              <div className="text-center">
+                <FileText className="h-12 w-12 mx-auto text-gray-400" />
+                <p className="mt-2 text-sm text-gray-500">
+                  This document type cannot be previewed directly.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownload}
+                  className="mt-4"
+                >
+                  Download to View
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {document.associations && (
+          <div className="mt-6 pt-6 border-t">
+            <h2 className="text-lg font-semibold mb-2">Associations</h2>
+            {document.associations.properties && document.associations.properties.length > 0 && (
+              <div className="mb-3">
+                <h3 className="text-sm font-medium text-gray-700">Properties:</h3>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {document.associations.properties.map((property: any, index: number) => (
+                    <span key={`property-${index}`} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                      {property.address || property.id}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {document.associations.people && document.associations.people.length > 0 && (
+              <div className="mb-3">
+                <h3 className="text-sm font-medium text-gray-700">People:</h3>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {document.associations.people.map((person: any, index: number) => (
+                    <span key={`person-${index}`} className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                      {person.name || person.id}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {document.associations.tags && document.associations.tags.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-700">Tags:</h3>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {document.associations.tags.map((tag: any, index: number) => (
+                    <span key={`tag-${index}`} className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
+                      {tag.name || tag.id}
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
           </div>
-
-          {document.associations && (
-            <div className="mt-6 pt-6 border-t">
-              <h2 className="text-lg font-semibold mb-2">Associations</h2>
-              {document.associations.properties && document.associations.properties.length > 0 && (
-                <div className="mb-3">
-                  <h3 className="text-sm font-medium text-gray-700">Properties:</h3>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {document.associations.properties.map((property: any, index: number) => (
-                      <span key={`property-${index}`} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                        {property.address || property.id}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {document.associations.people && document.associations.people.length > 0 && (
-                <div className="mb-3">
-                  <h3 className="text-sm font-medium text-gray-700">People:</h3>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {document.associations.people.map((person: any, index: number) => (
-                      <span key={`person-${index}`} className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                        {person.name || person.id}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {document.associations.groups && document.associations.groups.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700">Groups:</h3>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {document.associations.groups.map((group: any, index: number) => (
-                      <span key={`group-${index}`} className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
-                        {group.name || group.id}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Delete Confirmation Dialog */}

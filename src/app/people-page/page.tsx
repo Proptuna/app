@@ -217,23 +217,31 @@ export default function PeoplePage() {
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
           </div>
-        ) : selectedPerson ? (
-          <PersonDetail 
-            person={selectedPerson} 
-            onClose={handleClosePersonDetail}
-            onEdit={handlePersonEdit}
-            onDelete={(id) => {
-              handleClosePersonDetail();
-              handlePersonDeleted(id);
-            }}
-          />
         ) : (
-          <PeopleAgGrid
-            people={people}
-            onPersonDeleted={handlePersonDeleted}
-            onPersonEdit={handlePersonEdit}
-            onPersonView={handlePersonView}
-          />
+          <div className="relative">
+            <div className={`transition-all duration-300 ${selectedPerson ? 'translate-x-[-100%]' : 'translate-x-0'}`}>
+              <PeopleAgGrid
+                people={people}
+                onPersonDeleted={handlePersonDeleted}
+                onPersonEdit={handlePersonEdit}
+                onPersonView={handlePersonView}
+              />
+            </div>
+            
+            <div className={`absolute top-0 left-0 w-full h-full transition-all duration-300 ${selectedPerson ? 'translate-x-0' : 'translate-x-[100%]'}`}>
+              {selectedPerson && (
+                <PersonDetail 
+                  person={selectedPerson} 
+                  onClose={handleClosePersonDetail}
+                  onEdit={handlePersonEdit}
+                  onDelete={(id) => {
+                    handleClosePersonDetail();
+                    handlePersonDeleted(id);
+                  }}
+                />
+              )}
+            </div>
+          </div>
         )}
       </div>
 
