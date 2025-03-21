@@ -3,7 +3,7 @@
   "installCommand": "yarn install",
   "framework": "nextjs",
   "outputDirectory": ".next",
-  "buildEnvironment": {
+  "env": {
     "MIGRATE_ON_BUILD": "true"
   }
 }

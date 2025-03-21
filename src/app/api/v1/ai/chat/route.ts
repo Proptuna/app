@@ -23,9 +23,27 @@ export async function POST(request: NextRequest) {
     
     try {
       systemPrompt = fs.readFileSync(promptPath, 'utf-8');
+      console.log("Successfully loaded prompt from file");
     } catch (error) {
       console.error('Error loading system prompt:', error);
-      systemPrompt = "You are an AI assistant for Proptuna, a property management platform.";
+      // Fallback prompt if file can't be loaded
+      systemPrompt = `You are an AI assistant for Proptuna, a property management platform.
+
+Your primary responsibilities include:
+1. Answering questions about properties, maintenance, and tenant concerns
+2. Helping users diagnose and troubleshoot maintenance issues
+3. Creating maintenance tasks when necessary
+4. Providing information from available documents when relevant
+
+DOCUMENT HANDLING:
+- When you find relevant information in a document, include both the document ID and a markdown link
+- The system will handle making these references clickable for the user
+- If multiple documents have relevant information, reference all of them
+
+MAINTENANCE TASKS:
+- For maintenance issues, collect necessary information and create a task
+- Set appropriate priority based on severity
+- After creating the task, provide a helpful response with next steps`;
     }
 
     // Add system message at the beginning if it doesn't exist
@@ -116,7 +134,7 @@ async function processToolCall(name: string, args: any): Promise<any> {
       }
     
     case 'createMaintenanceTask':
-      const { description, property, priority = "medium", contactInfo } = args;
+      const { description, property, priority = "medium", contact } = args;
       
       // This would become an actual database call to create a maintenance task
       return { 
@@ -125,6 +143,7 @@ async function processToolCall(name: string, args: any): Promise<any> {
         priority,
         property: typeof property === 'string' ? property : 'Unknown property',
         description,
+        contact,
         createdAt: new Date().toISOString(),
         estimatedResponse: priority === "high" ? "Within 4 hours" : "Within 24-48 hours",
         message: `Maintenance task created`

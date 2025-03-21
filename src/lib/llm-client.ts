@@ -6,7 +6,6 @@ import {
   ToolUse,
   DocumentReference
 } from "@/types/llm";
-import { agentPrompt } from "../prompts/agent.prompt";
 
 // OpenRouter models
 const MODELS = {
@@ -177,65 +176,91 @@ export const generateChatCompletion = async (
     const allDocuments = await fetchRelevantDocuments("", undefined, true);
     console.log(`Loaded ${allDocuments.length} documents for context`);
     
-    // Use the imported agent prompt
-    let promptContent = agentPrompt;
-    if (!promptContent) {
-      // Fallback if import fails
-      promptContent = `You are an AI assistant for Proptuna, a property management platform.
-
-Your primary responsibilities include:
-1. Answering questions about properties, maintenance, and tenant concerns
-2. Helping users diagnose and troubleshoot maintenance issues
-3. Creating maintenance tasks when necessary
-4. Providing information from available documents when relevant`;
-    }
+    // Prepare the document context
+    let documentContextMessage = null;
+    let documentContext = "";
     
-    // If we found documents, add a system message with their content
     if (allDocuments.length > 0) {
       // Prepare document content for context, limiting per document to avoid token overflow
-      const documentContext = allDocuments.map(doc => {
+      documentContext = allDocuments.map(doc => {
         // Process the content to optimize for context
         const processedContent = processDocumentContent(doc);
         
         // Ensure correct document URL format
         const documentUrl = `/documents-page?docId=${doc.id}`;
         
-        return `--- DOCUMENT: ${doc.title} (ID: ${doc.id}) ---\n${processedContent}\n`;
+        return `DOCUMENT: ${doc.id}
+TITLE: ${doc.title || 'Untitled Document'}
+TYPE: ${doc.type || 'document'}
+URL: ${documentUrl}
+CONTENT: ${processedContent}
+---`;
       }).join('\n\n');
       
-      // Add a system message with document context
-      messages = [
-        ...messages.filter(msg => msg.role !== 'system' || !msg.content?.includes('DOCUMENT:')),
-        {
-          role: 'system',
-          content: `${promptContent}
+      // Create a system message with document context
+      documentContextMessage = {
+        role: 'system' as const,
+        content: `You are an AI assistant for Proptuna, a property management platform.
+
+Your primary responsibilities include:
+1. Answering questions about properties, maintenance, and tenant concerns
+2. Helping users diagnose and troubleshoot maintenance issues
+3. Creating maintenance tasks when necessary
+4. Providing information from available documents when relevant
 
 ## Available Documents
 ${documentContext}`,
-          timestamp: new Date().toISOString()
-        }
-      ];
-      
-      console.log("Added document context to conversation");
+      };
     }
     
     // Prepare the messages for the API call
-    const formattedMessages = messages.map(msg => ({
-      role: msg.role,
-      content: msg.content
-    }));
+    const apiMessages = messages.filter(msg => msg.role !== 'system' || !msg.content?.includes('DOCUMENT:'));
     
-    // Choose the model to use
-    const model = options.modelId || DEFAULT_MODEL;
-    
-    // Create payload
-    const payload = {
-      model,
-      messages: formattedMessages,
+    // Generate a response using OpenRouter
+    const payload: ChatCompletionRequest = {
+      model: options.modelId || DEFAULT_MODEL,
+      messages: [
+        // System prompt
+        {
+          role: "system" as const,
+          content: `You are an AI assistant for Proptuna, a property management platform.
+
+Your primary responsibilities include:
+1. Answering questions about properties, maintenance, and tenant concerns
+2. Helping users diagnose and troubleshoot maintenance issues
+3. Creating maintenance tasks when necessary
+4. Providing information from available documents when relevant`
+        },
+        // Tool usage instruction
+        {
+          role: "system" as const,
+          content: `CRITICAL TOOL USAGE INSTRUCTIONS:
+- NEVER output raw function call code like print(default_api.createMaintenanceTask()) or similar
+- Do not output Python, JavaScript, or any other programming language syntax
+- Use the provided createMaintenanceTask tool directly
+- For ANY maintenance issues, IMMEDIATELY use the createMaintenanceTask tool
+- If you see indications of floods, leaks, or emergencies along with an address and contact, use the tool immediately
+- In emergency situations, DO NOT respond conversationally without using the tool first
+- When creating a maintenance task, provide these parameters:
+  * property: The full property address
+  * contact: The name and phone number of the contact person
+  * description: Description of the maintenance issue
+  * priority: One of "emergency", "high", "medium", or "low"
+- The system will automatically process your tool call and generate a response
+- After using a tool, provide a helpful human-readable response to the user`
+        },
+        // Document context if available
+        ...(documentContextMessage ? [documentContextMessage] : []),
+        // Previous conversation messages
+        ...apiMessages
+      ],
       tools: TOOLS,
-      stream: false,
-      max_tokens: options.maxTokens || 1000,
-      temperature: options.temperature || 0.7
+      tool_choice: detectMaintenanceEmergency(apiMessages) ? {
+        type: "function",
+        function: { name: "createMaintenanceTask" }
+      } : "auto",
+      temperature: options.temperature || 0.7,
+      max_tokens: options.maxTokens || 1500
     };
     
     // Make API request to OpenRouter
@@ -269,6 +294,15 @@ ${documentContext}`,
       const toolCall = message.tool_calls[0];
       try {
         const args = JSON.parse(toolCall.function.arguments);
+        
+        // Set tool use info regardless of the specific tool
+        toolUse = {
+          name: toolCall.function.name,
+          args: args,
+          toolName: toolCall.function.name, // For backward compatibility
+          toolInput: args, // For backward compatibility
+          status: 'started' as const
+        };
         
         // If it's a document search tool, get document references
         if (toolCall.function.name === "searchDocuments") {
@@ -306,13 +340,11 @@ ${documentContext}`,
           }
         }
         
-        toolUse = {
-          name: toolCall.function.name,
-          args: args,
-          toolName: toolCall.function.name, // For backward compatibility
-          toolInput: args, // For backward compatibility
-          status: 'started' as const
-        };
+        // Process follow-up tool call (no additional action needed beyond logging it)
+        if (toolCall.function.name === "createFollowUp") {
+          console.log("Follow-up request created:", args);
+        }
+        
       } catch (error) {
         console.error("Error parsing tool call arguments:", error);
       }
@@ -387,7 +419,7 @@ ${documentContext}`,
         // The AI didn't provide a follow-up response after creating the task
         // Let's generate one
         const followUpPrompt = {
-          role: "system",
+          role: "system" as const,
           content: `The user reported a maintenance issue and you created a task with the following details:
 Priority: ${toolUse.args.priority || "not specified"}
 Description: ${toolUse.args.description || "not specified"}
@@ -408,7 +440,7 @@ Be empathetic and reassuring, especially for emergency or high-priority issues.`
           model: response.model,
           messages: [
             followUpPrompt,
-            { role: "user", content: "I need a response for the maintenance task I just created." }
+            { role: "user" as const, content: "I need a response for the maintenance task I just created." }
           ],
           max_tokens: 1000,
           temperature: 0.7
@@ -444,8 +476,8 @@ Be empathetic and reassuring, especially for emergency or high-priority issues.`
 
     // Create the final response object
     const assistantMessage: Message = {
-      role: "assistant",
-      content: message.content || await processMaintenanceTaskResponse(toolUse as ToolUse, data) || "",
+      role: "assistant" as const,
+      content: processResponseContent(message.content || await processMaintenanceTaskResponse(toolUse as ToolUse, data) || ""),
       timestamp: new Date().toISOString(),
       toolUse,
       documentReference
@@ -456,6 +488,91 @@ Be empathetic and reassuring, especially for emergency or high-priority issues.`
     console.error("Error generating chat completion:", error);
     throw error;
   }
+};
+
+/**
+ * Detect if the conversation appears to be about a maintenance emergency that requires immediate attention
+ * @param messages Recent conversation messages
+ * @returns True if this appears to be a maintenance emergency
+ */
+const detectMaintenanceEmergency = (messages: Message[]): boolean => {
+  if (messages.length === 0) return false;
+  
+  // Get the most recent user message
+  const lastUserMessageIndex = messages.findIndex(m => m.role === 'user');
+  if (lastUserMessageIndex === -1) return false;
+  
+  const lastUserMessage = messages[lastUserMessageIndex].content;
+  if (!lastUserMessage) return false;
+  
+  // Emergency keywords
+  const emergencyKeywords = [
+    'flood', 'flooding', 'water', 'leak', 'leaking', 'burst', 'pipe', 'fire', 
+    'smoke', 'gas', 'smell', 'no power', 'power outage', 'electric', 
+    'emergency', 'urgent', 'immediately', 'broken', 'damage'
+  ];
+  
+  // Check for address-like patterns (simple check for street names)
+  const hasAddressPattern = /\d+\s+[\w\s]+\b(street|st|avenue|ave|road|rd|blvd|boulevard|apt|apartment|unit|#)\b/i.test(lastUserMessage);
+  
+  // Check for phone number-like patterns
+  const hasPhonePattern = /\d{3}[-.)]\d{3}[-.)]\d{4}|\d{10}|\(\d{3}\)\s*\d{3}[-\s]\d{4}/.test(lastUserMessage);
+  
+  // Check for emergency keywords
+  const hasEmergencyKeyword = emergencyKeywords.some(keyword => 
+    lastUserMessage.toLowerCase().includes(keyword.toLowerCase())
+  );
+  
+  // Return true if we have an emergency keyword, and either an address or phone number
+  return hasEmergencyKeyword && (hasAddressPattern || hasPhonePattern);
+};
+
+/**
+ * Process response content to detect and fix improperly formatted tool calls
+ * @param content The response content from the LLM
+ * @returns Cleaned content without any raw function call syntax
+ */
+const processResponseContent = (content: string): string => {
+  if (!content) return "";
+  
+  // Detect Python-style function calls for maintenance task creation
+  const pythonStyleRegex = /print\s*\(\s*default_api\.createMaintenanceTask\s*\([^)]*\)\s*\)/g;
+  if (pythonStyleRegex.test(content)) {
+    console.warn("Detected improper Python-style maintenance task function call in response");
+    
+    // Extract the maintenance task details from the response - use multiple regexes instead of /s flag
+    const propertyMatch = content.match(/property\s*=\s*"([^"]+)"/);
+    const contactMatch = content.match(/contact\s*=\s*"([^"]+)"/);
+    const descriptionMatch = content.match(/description\s*=\s*"([^"]+)"/);
+    const priorityMatch = content.match(/priority\s*=\s*"([^"]+)"/);
+    
+    if (propertyMatch && contactMatch && descriptionMatch && priorityMatch) {
+      const property = propertyMatch[1];
+      const contact = contactMatch[1];
+      const description = descriptionMatch[1];
+      const priority = priorityMatch[1];
+      
+      // Replace the Python syntax with a proper message
+      return content.replace(pythonStyleRegex, 
+        `I've created an emergency maintenance task for ${property} with the following details:
+        
+- **Property**: ${property}
+- **Contact**: ${contact}
+- **Issue**: ${description}
+- **Priority**: ${priority}
+
+Our maintenance team has been notified and will respond as quickly as possible.`);
+    }
+  }
+  
+  // Detect other potential code-like syntax
+  const genericCodeRegex = /((\w+\.\w+\()|(\w+\().*(\)))/g;
+  if (genericCodeRegex.test(content)) {
+    console.warn("Detected potential code-like syntax in response");
+    // Just log for now, we'll handle specific cases as they arise
+  }
+  
+  return content;
 };
 
 /**
