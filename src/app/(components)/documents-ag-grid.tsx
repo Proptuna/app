@@ -4,19 +4,22 @@ import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { ColDef, GridReadyEvent, ICellRendererParams } from "ag-grid-community";
 import {
-  FileTextIcon,
-  FileIcon,
-  ShieldIcon,
+  AlertCircle,
+  AlertTriangle,
+  BuildingIcon,
+  DownloadIcon,
   EyeIcon,
   EyeOffIcon,
-  BuildingIcon,
-  UserIcon,
+  FileIcon,
+  FileTextIcon,
+  FileX,
   HomeIcon,
   MoreHorizontalIcon,
-  DownloadIcon,
   PencilIcon,
-  TrashIcon,
   Search,
+  ShieldIcon,
+  TrashIcon,
+  UserIcon,
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +42,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 // Import AG Grid styles
@@ -60,6 +62,7 @@ export interface Document {
     properties: Array<{ id: string; address: string }>;
     people: Array<{ id: string; name: string; type: string }>;
     groups: Array<{ id: string; name: string }>;
+    tags: Array<{ id: string; name: string }>;
   };
 }
 
@@ -85,291 +88,284 @@ const DocumentTypeIcon = ({ type }: { type: string }) => {
 };
 
 // Title Cell Renderer
-const TitleRenderer = (params: ICellRendererParams) => {
+function TitleRenderer(params: ICellRendererParams) {
+  const document = params.data;
+  
   return (
-    <div className="flex items-center">
-      <DocumentTypeIcon type={params.data.type} />
-      <span className="ml-2">{params.value}</span>
+    <div className="flex items-center gap-3">
+      <div className="flex-shrink-0 w-9 h-9 bg-indigo-50 dark:bg-indigo-900/20 rounded-md flex items-center justify-center">
+        <FileTextIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+      </div>
+      <div className="min-w-0">
+        <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+          {document.title}
+        </div>
+        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+          {new Date(document.created_at).toLocaleDateString()}
+        </div>
+      </div>
     </div>
   );
-};
+}
 
 // Type Badge Cell Renderer
-const TypeBadgeRenderer = (params: ICellRendererParams) => {
+function TypeBadgeRenderer(params: ICellRendererParams) {
   const type = params.value;
   
-  switch (type) {
-    case "markdown":
-      return (
-        <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-          Markdown
-        </Badge>
-      );
-    case "file":
-      return (
-        <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-          File
-        </Badge>
-      );
-    case "escalation-policy":
-      return (
-        <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
-          Escalation Policy
-        </Badge>
-      );
-    default:
-      return <Badge variant="outline">{type}</Badge>;
-  }
-};
-
-// Associations Cell Renderer
-const AssociationsRenderer = (params: ICellRendererParams) => {
-  const associations = params.value;
-  const allAssociations: Array<{type: string; id: string; name: string}> = [];
+  let badgeClass = "bg-gray-100 text-gray-800";
+  let icon = <FileIcon className="h-3.5 w-3.5" />;
   
-  if (associations?.properties) {
-    associations.properties.forEach((prop: {id: string; address: string}) => {
-      allAssociations.push({
-        type: "property",
-        id: prop.id,
-        name: prop.address,
-      });
-    });
+  if (type === "markdown") {
+    badgeClass = "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300";
+    icon = <FileTextIcon className="h-3.5 w-3.5" />;
+  } else if (type === "pdf") {
+    badgeClass = "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
+    icon = <FileIcon className="h-3.5 w-3.5" />;
+  } else if (type === "escalation-policy") {
+    badgeClass = "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300";
+    icon = <ShieldIcon className="h-3.5 w-3.5" />;
+  } else if (type === "image") {
+    badgeClass = "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
+    icon = <FileIcon className="h-3.5 w-3.5" />;
   }
-  
-  if (associations?.people) {
-    associations.people.forEach((person: {id: string; name: string; type: string}) => {
-      allAssociations.push({
-        type: "person",
-        id: person.id,
-        name: person.name,
-      });
-    });
-  }
-  
-  if (associations?.groups) {
-    associations.groups.forEach((group: {id: string; name: string}) => {
-      allAssociations.push({
-        type: "group",
-        id: group.id,
-        name: group.name,
-      });
-    });
-  }
-  
-  const getAssociationIcon = (type: string) => {
-    switch (type) {
-      case "group":
-        return <BuildingIcon className="h-3 w-3 mr-1" />;
-      case "property":
-        return <HomeIcon className="h-3 w-3 mr-1" />;
-      case "person":
-        return <UserIcon className="h-3 w-3 mr-1" />;
-      default:
-        return null;
-    }
-  };
   
   return (
-    <div className="flex flex-wrap gap-1">
-      {allAssociations.map((assoc, index) => (
-        <Badge
-          key={index}
-          variant="outline"
-          className="flex items-center text-xs bg-gray-100 dark:bg-gray-700"
-        >
-          {getAssociationIcon(assoc.type)}
-          {assoc.name}
-        </Badge>
-      ))}
+    <div className="flex items-center">
+      <Badge variant="outline" className={`flex items-center gap-1.5 ${badgeClass} border-0 font-medium`}>
+        {icon}
+        <span>{type}</span>
+      </Badge>
     </div>
   );
-};
+}
+
+// Associations Cell Renderer
+function AssociationsRenderer(params: ICellRendererParams) {
+  const associations = params.value;
+  
+  if (!associations) {
+    return <div className="text-gray-400 text-sm">No associations</div>;
+  }
+  
+  const properties = associations.properties || [];
+  const people = associations.people || [];
+  const tags = associations.tags || [];
+  
+  return (
+    <div className="flex flex-wrap gap-2 items-center">
+      {properties.length > 0 && (
+        <div className="flex items-center gap-1">
+          <div className="flex-shrink-0 h-6 w-6 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+            <HomeIcon className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+          </div>
+          <span className="text-xs text-gray-600 dark:text-gray-300">
+            {properties.length === 1 
+              ? properties[0].address || properties[0].id 
+              : `${properties.length} properties`}
+          </span>
+        </div>
+      )}
+      
+      {people.length > 0 && (
+        <div className="flex items-center gap-1">
+          <div className="flex-shrink-0 h-6 w-6 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
+            <UserIcon className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+          </div>
+          <span className="text-xs text-gray-600 dark:text-gray-300">
+            {people.length === 1 
+              ? people[0].name || people[0].id 
+              : `${people.length} people`}
+          </span>
+        </div>
+      )}
+      
+      {tags.length > 0 && (
+        <div className="flex items-center gap-1">
+          <div className="flex-shrink-0 h-6 w-6 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center">
+            <FileIcon className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+          </div>
+          <span className="text-xs text-gray-600 dark:text-gray-300">
+            {tags.length === 1 
+              ? tags[0].name || tags[0].id 
+              : `${tags.length} tags`}
+          </span>
+        </div>
+      )}
+      
+      {properties.length === 0 && people.length === 0 && tags.length === 0 && (
+        <div className="text-gray-400 text-sm">No associations</div>
+      )}
+    </div>
+  );
+}
 
 // Visibility Cell Renderer
-const VisibilityRenderer = (params: ICellRendererParams) => {
+function VisibilityRenderer(params: ICellRendererParams) {
   const visibility = params.value;
   
+  let badgeClass = "";
+  let icon = null;
+  
   switch (visibility) {
-    case "external":
-      return (
-        <div className="flex items-center text-green-600 dark:text-green-400">
-          <EyeIcon className="h-4 w-4 mr-1" />
-          <span>Public</span>
-        </div>
-      );
-    case "confidential":
-      return (
-        <div className="flex items-center text-red-600 dark:text-red-400">
-          <EyeOffIcon className="h-4 w-4 mr-1" />
-          <span>Confidential</span>
-        </div>
-      );
     case "internal":
+      badgeClass = "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300";
+      icon = <EyeIcon className="h-3.5 w-3.5" />;
+      break;
+    case "external":
+      badgeClass = "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300";
+      icon = <EyeIcon className="h-3.5 w-3.5" />;
+      break;
+    case "confidential":
+      badgeClass = "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300";
+      icon = <EyeOffIcon className="h-3.5 w-3.5" />;
+      break;
     default:
-      return (
-        <div className="flex items-center text-amber-600 dark:text-amber-400">
-          <EyeOffIcon className="h-4 w-4 mr-1" />
-          <span>Internal</span>
-        </div>
-      );
+      badgeClass = "bg-gray-50 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
+      icon = <EyeIcon className="h-3.5 w-3.5" />;
   }
-};
+  
+  return (
+    <div className="flex items-center">
+      <Badge variant="outline" className={`flex items-center gap-1.5 ${badgeClass} border-0 font-medium`}>
+        {icon}
+        <span className="capitalize">{visibility}</span>
+      </Badge>
+    </div>
+  );
+}
 
 // Date Formatter
-const formatDate = (params: ICellRendererParams) => {
-  if (!params.value) return "";
+function formatDate(params: ICellRendererParams) {
+  if (!params.value) return <span className="text-gray-400">-</span>;
+  
   const date = new Date(params.value);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-};
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - date.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  let formattedDate;
+  
+  if (diffDays <= 1) {
+    // Today or yesterday - show time
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const formattedHours = hours % 12 || 12;
+    const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
+    
+    formattedDate = `${formattedHours}:${formattedMinutes} ${ampm}`;
+    
+    if (date.getDate() !== now.getDate() || 
+        date.getMonth() !== now.getMonth() || 
+        date.getFullYear() !== now.getFullYear()) {
+      formattedDate = `Yesterday, ${formattedDate}`;
+    } else {
+      formattedDate = `Today, ${formattedDate}`;
+    }
+  } else if (diffDays <= 7) {
+    // Within the last week - show day of week
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    formattedDate = days[date.getDay()];
+  } else {
+    // More than a week ago - show date
+    const options: Intl.DateTimeFormatOptions = { 
+      month: 'short', 
+      day: 'numeric',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+    };
+    formattedDate = date.toLocaleDateString(undefined, options);
+  }
+  
+  return (
+    <div className="flex flex-col">
+      <span className="text-sm text-gray-700 dark:text-gray-300">{formattedDate}</span>
+    </div>
+  );
+}
 
 // Actions Cell Renderer
-const ActionsRenderer = (params: ICellRendererParams) => {
+function ActionsRenderer(params: ICellRendererParams) {
+  const { onDocumentDeleted, onDocumentView } = params.context;
+  const document = params.data;
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const handleView = () => {
-    console.log("Viewing document with ID:", params.data.id);
-    if (params.context.onDocumentView) {
-      params.context.onDocumentView(params.data);
-    } else {
-      // Fallback to direct navigation if no callback provided
-      window.location.href = `/documents/${params.data.id}`;
-    }
-  };
-  
-  const handleDownload = () => {
-    // For markdown documents, we can create a blob and download it
-    if (params.data.type === "markdown") {
-      const blob = new Blob([params.data.data], { type: "text/markdown" });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${params.data.title}.md`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } else {
-      // For other document types, this would depend on implementation
-      console.log("Download document:", params.data.id);
-    }
-  };
-  
-  const handleEdit = () => {
-    window.location.href = `/documents/${params.data.id}/edit`;
-  };
-  
   const handleDelete = async () => {
+    if (!document || !document.id) return;
+    
     setIsDeleting(true);
     setDeleteError(null);
     
     try {
-      await deleteDocument(params.data.id);
-      // Refresh the grid or notify parent component about the deletion
-      if (params.context.onDocumentDeleted) {
-        params.context.onDocumentDeleted(params.data.id);
+      const result = await deleteDocument(document.id);
+      
+      if (result.success) {
+        // Call the onDelete callback if provided
+        if (onDocumentDeleted) {
+          onDocumentDeleted(document.id);
+        }
+        setIsDeleteDialogOpen(false);
       }
     } catch (error: any) {
       console.error("Error deleting document:", error);
       setDeleteError(error.message || "Failed to delete document");
     } finally {
       setIsDeleting(false);
-      setIsDeleteDialogOpen(false);
     }
   };
-  
-  return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-8 w-8 p-0">
-            <MoreHorizontalIcon className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handleView}>
-            <EyeIcon className="mr-2 h-4 w-4" />
-            <span>View</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleDownload}>
-            <DownloadIcon className="mr-2 h-4 w-4" />
-            <span>Download</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleEdit}>
-            <PencilIcon className="mr-2 h-4 w-4" />
-            <span>Edit</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem 
-            className="text-red-600 dark:text-red-400" 
-            onClick={() => setIsDeleteDialogOpen(true)}
-          >
-            <TrashIcon className="mr-2 h-4 w-4" />
-            <span>Delete</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
 
-      {/* Delete Confirmation Dialog */}
+  return (
+    <div className="flex items-center justify-center h-full">
+      <button
+        onClick={() => onDocumentView(document)}
+        className="p-2 text-gray-500 hover:text-indigo-600 transition-colors"
+        title="View document"
+      >
+        <EyeIcon className="h-5 w-5" />
+      </button>
+      
+      {/* Delete Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="max-w-md">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
-              <AlertCircle className="h-5 w-5" />
-              Confirm Document Deletion
-            </AlertDialogTitle>
-            <AlertDialogDescription className="pt-2">
-              Are you sure you want to delete the document "{params.data.title}"?
-              This action cannot be undone and will permanently remove this document and all its associations.
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the document "{document?.title}".
+              This action cannot be undone.
             </AlertDialogDescription>
+            {deleteError && (
+              <div className="mt-2 p-3 bg-red-50 text-red-600 rounded-md border border-red-200 flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                <div>{deleteError}</div>
+              </div>
+            )}
           </AlertDialogHeader>
-          {deleteError && (
-            <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-sm border border-red-200">
-              <div className="font-medium">Error</div>
-              <div>{deleteError}</div>
-            </div>
-          )}
-          <AlertDialogFooter className="gap-2 sm:gap-0">
-            <AlertDialogCancel 
-              disabled={isDeleting}
-              className="mt-0"
-            >
-              Cancel
-            </AlertDialogCancel>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
                 handleDelete();
               }}
               disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 text-white focus:ring-red-600"
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
             >
               {isDeleting ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   Deleting...
-                </span>
+                </div>
               ) : (
-                <span className="flex items-center gap-2">
-                  <TrashIcon className="h-4 w-4" />
-                  Delete Document
-                </span>
+                "Delete"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
-};
+}
 
 export default function DocumentsAgGrid({ 
   documents, 
@@ -422,6 +418,11 @@ export default function DocumentsAgGrid({
         // Search in groups
         if (doc.associations.groups?.some(g => 
           g.name.toLowerCase().includes(searchTerm)
+        )) return true;
+        
+        // Search in tags
+        if (doc.associations.tags?.some(t => 
+          t.name.toLowerCase().includes(searchTerm)
         )) return true;
       }
       
@@ -510,7 +511,7 @@ export default function DocumentsAgGrid({
       cellRenderer: TypeBadgeRenderer,
       sortable: true,
       filter: true,
-      width: 150,
+      width: 130,
       filterParams: {
         filterOptions: ['equals'],
         defaultOption: 'equals'
@@ -551,13 +552,14 @@ export default function DocumentsAgGrid({
       }
     },
     {
-      headerName: "Actions",
+      headerName: "",
       field: "actions",
       cellRenderer: ActionsRenderer,
       sortable: false,
       filter: false,
-      width: 100,
+      width: 70,
       pinned: "right",
+      cellClass: "flex justify-center"
     },
   ];
   
@@ -593,7 +595,8 @@ export default function DocumentsAgGrid({
         const propertyAddresses = associations.properties?.map((p: any) => p.address).join(' ') || '';
         const peopleNames = associations.people?.map((p: any) => p.name).join(' ') || '';
         const groupNames = associations.groups?.map((g: any) => g.name).join(' ') || '';
-        return `${propertyAddresses} ${peopleNames} ${groupNames}`;
+        const tagNames = associations.tags?.map((t: any) => t.name).join(' ') || '';
+        return `${propertyAddresses} ${peopleNames} ${groupNames} ${tagNames}`;
       }
       
       // For data field, include the document content
@@ -605,27 +608,35 @@ export default function DocumentsAgGrid({
     }
   }), []);
 
-  const noRowsOverlayComponent = useMemo(() => {
-    return () => (
-      <div className="flex flex-col items-center justify-center h-full p-12">
-        <FileIcon className="h-16 w-16 text-gray-300 mb-4" />
-        <h3 className="text-xl font-medium text-gray-500">No documents found</h3>
-        <div className="text-gray-400 text-center mt-2">
+  // Custom No Rows Overlay Component
+  function NoRowsOverlay() {
+    return (
+      <div className="flex flex-col items-center justify-center h-full py-12">
+        <FileX className="h-12 w-12 text-gray-300 dark:text-gray-600 mb-4" />
+        <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400">No Documents Found</h3>
+        <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
           Try adjusting your search or filter criteria
-        </div>
+        </p>
       </div>
     );
-  }, []);
-  
-  const loadingOverlayComponent = useMemo(() => {
-    return () => (
-      <div className="flex flex-col items-center justify-center h-full p-12">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-        <div className="text-gray-500 mt-4">Loading documents...</div>
+  }
+
+  // Custom Loading Overlay Component
+  function LoadingOverlay() {
+    return (
+      <div className="flex flex-col items-center justify-center h-full py-12">
+        <div className="h-8 w-8 border-4 border-t-indigo-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin mb-4"></div>
+        <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400">Loading Documents</h3>
+        <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+          Please wait while we fetch your documents
+        </p>
       </div>
     );
-  }, []);
-  
+  }
+
+  const noRowsOverlayComponent = useMemo(() => NoRowsOverlay, []);
+  const loadingOverlayComponent = useMemo(() => LoadingOverlay, []);
+
   // Context for the grid
   const context = useMemo(() => ({
     onDocumentDeleted,
@@ -633,7 +644,7 @@ export default function DocumentsAgGrid({
   }), [onDocumentDeleted, onDocumentView]);
 
   return (
-    <div className="ag-theme-alpine dark:ag-theme-alpine-dark w-full rounded-md overflow-hidden shadow-sm">
+    <div className="ag-theme-custom w-full rounded-md overflow-hidden">
       <div className="p-4 border-b flex items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -641,7 +652,7 @@ export default function DocumentsAgGrid({
             placeholder="Search documents..."
             value={quickFilterText}
             onChange={onFilterTextChange}
-            className="pl-10"
+            className="pl-10 border-gray-200 dark:border-gray-700 focus:ring-blue-500 focus:border-blue-500"
           />
           {quickFilterText && (
             <button
@@ -660,57 +671,94 @@ export default function DocumentsAgGrid({
       </div>
       <div className="h-[550px]">
         <style jsx global>{`
-          .ag-theme-alpine {
+          .ag-theme-custom {
             --ag-header-height: 50px;
             --ag-header-foreground-color: #374151;
-            --ag-header-background-color: #f9fafb;
-            --ag-header-cell-hover-background-color: #f3f4f6;
+            --ag-header-background-color: #ffffff;
+            --ag-header-cell-hover-background-color: #f9fafb;
             --ag-header-cell-moving-background-color: #f3f4f6;
+            --ag-background-color: #ffffff;
             --ag-row-hover-color: #f9fafb;
-            --ag-selected-row-background-color: rgba(59, 130, 246, 0.1);
+            --ag-selected-row-background-color: rgba(79, 70, 229, 0.1);
             --ag-font-size: 14px;
             --ag-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             --ag-grid-size: 6px;
             --ag-list-item-height: 30px;
             --ag-cell-horizontal-padding: 12px;
-            --ag-borders: solid 1px;
-            --ag-border-color: #e5e7eb;
+            --ag-borders: none;
+            --ag-border-color: transparent;
             --ag-secondary-border-color: #e5e7eb;
             --ag-row-border-color: #f3f4f6;
-            --ag-cell-horizontal-border: solid 1px var(--ag-border-color);
-            --ag-range-selection-border-color: rgba(59, 130, 246, 0.5);
-            --ag-range-selection-background-color: rgba(59, 130, 246, 0.1);
+            --ag-cell-horizontal-border: none;
+            --ag-range-selection-border-color: rgba(79, 70, 229, 0.5);
+            --ag-range-selection-background-color: rgba(79, 70, 229, 0.1);
+            --ag-icon-color: #6b7280;
+            --ag-icon-size: 16px;
+            --ag-icon-font-family: agGridAlpine;
           }
           
-          .ag-theme-alpine-dark {
+          .dark .ag-theme-custom {
             --ag-header-foreground-color: #e5e7eb;
             --ag-header-background-color: #1f2937;
             --ag-header-cell-hover-background-color: #374151;
             --ag-header-cell-moving-background-color: #374151;
-            --ag-background-color: #111827;
+            --ag-background-color: #1f2937;
             --ag-foreground-color: #e5e7eb;
-            --ag-row-hover-color: #1f2937;
-            --ag-selected-row-background-color: rgba(59, 130, 246, 0.2);
-            --ag-border-color: #374151;
+            --ag-row-hover-color: #111827;
+            --ag-selected-row-background-color: rgba(79, 70, 229, 0.2);
+            --ag-border-color: transparent;
             --ag-secondary-border-color: #374151;
-            --ag-row-border-color: #1f2937;
+            --ag-row-border-color: #374151;
+            --ag-icon-color: #9ca3af;
           }
           
-          .ag-theme-alpine .ag-header,
-          .ag-theme-alpine-dark .ag-header {
+          .ag-theme-custom .ag-header {
             font-weight: 600;
+            border-bottom: 1px solid var(--ag-secondary-border-color);
           }
           
-          .ag-theme-alpine .ag-row,
-          .ag-theme-alpine-dark .ag-row {
+          .ag-theme-custom .ag-row {
             border-bottom-style: solid;
             border-bottom-width: 1px;
             border-bottom-color: var(--ag-row-border-color);
           }
           
-          .ag-theme-alpine .ag-row-hover,
-          .ag-theme-alpine-dark .ag-row-hover {
+          .ag-theme-custom .ag-row-hover {
             background-color: var(--ag-row-hover-color);
+          }
+          
+          .ag-theme-custom .ag-header-cell-padded,
+          .ag-theme-custom .ag-cell-padded {
+            padding-left: 16px;
+            padding-right: 16px;
+          }
+          
+          .ag-theme-custom .ag-cell {
+            display: flex;
+            align-items: center;
+          }
+          
+          .ag-theme-custom .ag-paging-panel {
+            color: var(--ag-foreground-color);
+            height: 48px;
+            padding: 0 16px;
+            border-top: 1px solid var(--ag-secondary-border-color);
+          }
+          
+          .ag-theme-custom .ag-paging-button {
+            cursor: pointer;
+            padding: 6px;
+            margin: 0 2px;
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+          }
+          
+          .ag-theme-custom .ag-paging-button:hover:not(.ag-disabled) {
+            background-color: #f3f4f6;
+          }
+          
+          .dark .ag-theme-custom .ag-paging-button:hover:not(.ag-disabled) {
+            background-color: #374151;
           }
         `}</style>
         <AgGridReact
