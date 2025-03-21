@@ -18,6 +18,13 @@ export interface DocumentReference {
   title: string;
   type: string;
   relevance: 'high' | 'medium' | 'low';
+  content?: string;
+  created_at?: string;
+  updated_at?: string;
+  visibility?: string;
+  metadata?: any;
+  associations?: any;
+  url?: string;
 }
 
 export interface ChatOptions {
