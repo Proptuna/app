@@ -219,7 +219,7 @@ const ActionsRenderer = (params: ICellRendererParams) => {
         variant="ghost"
         size="sm"
         className="h-8 w-8 p-0"
-        onClick={() => window.open(`/api/documents/${document.id}/download`, '_blank')}
+        onClick={() => window.open(`/api/v1/documents/${document.id}/download`, '_blank')}
         title="Download document"
       >
         <DownloadIcon className="h-4 w-4" />

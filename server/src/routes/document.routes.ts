@@ -9,6 +9,7 @@ router.get('/:id', documentController.getDocumentById);
 router.post('/', documentController.createDocument);
 router.put('/:id', documentController.updateDocument);
 router.delete('/:id', documentController.deleteDocument);
+router.get('/:id/download', documentController.downloadDocument);
 
 // Document tags endpoints
 router.get('/:id/tags', documentController.getDocumentTags);

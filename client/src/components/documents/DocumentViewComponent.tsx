@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { ArrowLeft, Download, Trash, Edit, FileText, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, Download, Trash, FileText, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { deleteDocument } from "@/lib/documents-client";
+import { deleteDocument, downloadDocument } from "@/lib/documents-client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +30,7 @@ interface DocumentData {
   id: string;
   title: string;
   content?: string;    // Content may be here
-  data?: string;       // Or data might be used for content
+  data?: string | any; // Or data might be used for content (string or nested object)
   type: string;
   visibility?: string;
   createdAt?: string;
@@ -40,6 +40,7 @@ interface DocumentData {
   metadata?: Record<string, any>;
   associations?: DocumentAssociations;
   version?: number;
+  success?: boolean;   // API response may include success field
 }
 
 interface DocumentViewComponentProps {
@@ -52,12 +53,21 @@ interface DocumentViewComponentProps {
 export default function DocumentViewComponent({ document, onClose, onDelete }: DocumentViewComponentProps) {
   console.log("Rendering document view component with document:", document);
   
+  // Handle the case where the document is nested in a 'data' property (API response format)
+  const actualDocument = document.data && typeof document.data === 'object' ? document.data : document;
+  
   // Determine where the content is stored
-  const documentContent = document.content || document.data || '';
-  console.log("Document content source:", document.content ? "content field" : document.data ? "data field" : "not found");
+  const documentContent = actualDocument.content || 
+                         (typeof actualDocument.data === 'string' ? actualDocument.data : '');
+  
+  console.log("Document content source:", 
+    actualDocument.content ? "content field" : 
+    typeof actualDocument.data === 'string' ? "data field" : 
+    "not found");
+  
   console.log("Document content fields:", {
-    content: document.content,
-    data: document.data,
+    content: actualDocument.content,
+    data: actualDocument.data,
     fullData: JSON.stringify(document)
   });
   
@@ -74,39 +84,83 @@ export default function DocumentViewComponent({ document, onClose, onDelete }: D
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const handleDownload = () => {
-    // For markdown documents, we can create a blob and download it
-    if (document.type === "markdown") {
-      const blob = new Blob([documentContent], { type: "text/markdown" });
-      const url = window.URL.createObjectURL(blob);
-      const a = window.document.createElement("a");
-      a.href = url;
-      a.download = `${document.title}.md`;
-      window.document.body.appendChild(a);
-      a.click();
-      window.document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } else {
-      // For other document types, we would need to implement a different download method
-      console.log("Download not implemented for this document type");
+  const handleDownload = async () => {
+    try {
+      // For markdown documents, we can either create a blob locally or use the API
+      if (actualDocument.type === "markdown") {
+        // Try the API first, which will return the content directly with proper headers
+        try {
+          const response = await fetch(`/api/v1/documents/${actualDocument.id}/download`);
+          
+          if (response.ok) {
+            // Get the filename from the Content-Disposition header if available
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let filename = `${actualDocument.title}.md`;
+            
+            if (contentDisposition) {
+              const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+              if (filenameMatch && filenameMatch[1]) {
+                filename = filenameMatch[1];
+              }
+            }
+            
+            // Get the blob from the response
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            
+            // Create a download link and trigger it
+            const a = window.document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            window.document.body.appendChild(a);
+            a.click();
+            window.document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            return;
+          }
+        } catch (apiError) {
+          console.warn("API download failed, falling back to client-side download:", apiError);
+        }
+        
+        // Fallback to client-side download if API fails
+        const blob = new Blob([documentContent], { type: "text/markdown" });
+        const url = window.URL.createObjectURL(blob);
+        const a = window.document.createElement("a");
+        a.href = url;
+        a.download = `${actualDocument.title}.md`;
+        window.document.body.appendChild(a);
+        a.click();
+        window.document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } else {
+        // For other document types, use the API to get a download URL
+        console.log("Downloading document via API:", actualDocument.id);
+        const downloadUrl = await downloadDocument(actualDocument.id);
+        
+        // Open the download URL in a new tab
+        window.open(downloadUrl, '_blank');
+      }
+    } catch (error) {
+      console.error("Error downloading document:", error);
+      // You could add error handling UI here
     }
   };
 
   const handleDelete = async () => {
-    if (!document || !document.id) return;
+    if (!actualDocument || !actualDocument.id) return;
     
     setIsDeleting(true);
     setDeleteError(null);
     
     try {
-      console.log(`Deleting document with ID: ${document.id}`);
-      const result = await deleteDocument(document.id);
+      console.log(`Deleting document with ID: ${actualDocument.id}`);
+      const result = await deleteDocument(actualDocument.id);
       console.log("Delete result:", result);
       
       if (result.success) {
         // Call the onDelete callback if provided
         if (onDelete) {
-          onDelete(document.id);
+          onDelete(actualDocument.id);
         }
         // Close the document view
         onClose?.();
@@ -165,7 +219,7 @@ export default function DocumentViewComponent({ document, onClose, onDelete }: D
           Back to Documents
         </Button>
         
-        {document && (
+        {actualDocument && (
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -192,15 +246,15 @@ export default function DocumentViewComponent({ document, onClose, onDelete }: D
       {/* Document content */}
       <div className="bg-white dark:bg-gray-800 overflow-hidden flex-1 p-6 overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold">{document.title}</h1>
-          <Badge variant="outline">{document.type}</Badge>
+          <h1 className="text-2xl font-bold">{actualDocument.title}</h1>
+          <Badge variant="outline">{actualDocument.type}</Badge>
         </div>
         <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          <p>Created: {formatDate(document.createdAt || document.created_at)}</p>
-          <p>Last Updated: {formatDate(document.updatedAt || document.updated_at)}</p>
+          <p>Created: {formatDate(actualDocument.createdAt || actualDocument.created_at)}</p>
+          <p>Last Updated: {formatDate(actualDocument.updatedAt || actualDocument.updated_at)}</p>
         </div>
         <div className="prose dark:prose-invert max-w-none">
-          {document.type === "markdown" ? (
+          {actualDocument.type === "markdown" ? (
             <div className="markdown-content">
               <ReactMarkdown>
                 {documentContent}
@@ -226,14 +280,14 @@ export default function DocumentViewComponent({ document, onClose, onDelete }: D
           )}
         </div>
 
-        {document.associations && (
+        {actualDocument.associations && (
           <div className="mt-6 pt-6 border-t">
             <h2 className="text-lg font-semibold mb-2">Associations</h2>
-            {document.associations.properties && document.associations.properties.length > 0 && (
+            {actualDocument.associations.properties && actualDocument.associations.properties.length > 0 && (
               <div className="mb-3">
                 <h3 className="text-sm font-medium text-gray-700">Properties:</h3>
                 <div className="flex flex-wrap gap-2 mt-1">
-                  {document.associations.properties.map((property: any, index: number) => (
+                  {actualDocument.associations.properties.map((property: any, index: number) => (
                     <a 
                       key={`property-${index}`} 
                       href={`/properties-page?id=${property.id}`}
@@ -245,11 +299,11 @@ export default function DocumentViewComponent({ document, onClose, onDelete }: D
                 </div>
               </div>
             )}
-            {document.associations.people && document.associations.people.length > 0 && (
+            {actualDocument.associations.people && actualDocument.associations.people.length > 0 && (
               <div className="mb-3">
                 <h3 className="text-sm font-medium text-gray-700">People:</h3>
                 <div className="flex flex-wrap gap-2 mt-1">
-                  {document.associations.people.map((person: any, index: number) => (
+                  {actualDocument.associations.people.map((person: any, index: number) => (
                     <a 
                       key={`person-${index}`} 
                       href={`/people-page?personId=${person.id}`}
@@ -261,11 +315,11 @@ export default function DocumentViewComponent({ document, onClose, onDelete }: D
                 </div>
               </div>
             )}
-            {document.associations.tags && document.associations.tags.length > 0 && (
+            {actualDocument.associations.tags && actualDocument.associations.tags.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium text-gray-700">Tags:</h3>
                 <div className="flex flex-wrap gap-2 mt-1">
-                  {document.associations.tags.map((tag: any, index: number) => (
+                  {actualDocument.associations.tags.map((tag: any, index: number) => (
                     <span key={`tag-${index}`} className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
                       {tag.name || tag.id}
                     </span>
@@ -273,11 +327,11 @@ export default function DocumentViewComponent({ document, onClose, onDelete }: D
                 </div>
               </div>
             )}
-            {document.associations.relatedDocuments && document.associations.relatedDocuments.length > 0 && (
+            {actualDocument.associations.relatedDocuments && actualDocument.associations.relatedDocuments.length > 0 && (
               <div className="mb-3">
                 <h3 className="text-sm font-medium text-gray-700">Related Documents:</h3>
                 <div className="flex flex-wrap gap-2 mt-1">
-                  {document.associations.relatedDocuments.map((relatedDoc: any, index: number) => (
+                  {actualDocument.associations.relatedDocuments.map((relatedDoc: any, index: number) => (
                     <a 
                       key={`doc-${index}`} 
                       href={`/documents-page?docId=${relatedDoc.id}`}
@@ -302,7 +356,7 @@ export default function DocumentViewComponent({ document, onClose, onDelete }: D
               Confirm Document Deletion
             </AlertDialogTitle>
             <AlertDialogDescription className="pt-2">
-              Are you sure you want to delete the document "{document?.title}"?
+              Are you sure you want to delete the document "{actualDocument?.title}"?
               This action cannot be undone and will permanently remove this document and all its associations.
             </AlertDialogDescription>
           </AlertDialogHeader>

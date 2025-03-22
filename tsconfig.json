@@ -23,6 +23,6 @@
       "pages/*": ["./src/app/*/page"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "client/vite.config.mts"],
   "exclude": ["node_modules"]
 }

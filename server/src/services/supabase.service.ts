@@ -23,6 +23,8 @@ export interface Document {
   description?: string;
   file_url?: string;
   property_id?: string;
+  type?: string;
+  data?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -64,6 +66,9 @@ export interface ISupabaseService {
   getPropertyById(propertyId: string): Promise<Property | null>;
   getDocuments(): Promise<Document[]>;
   getDocumentById(id: string): Promise<Document | null>;
+  createDocument(documentData: Partial<Document>): Promise<Document>;
+  updateDocument(id: string, updates: Partial<Document>): Promise<Document>;
+  deleteDocument(id: string): Promise<boolean>;
   getPeople(): Promise<Person[]>;
   getPersonById(id: string): Promise<Person | null>;
   getConversations(): Promise<Conversation[]>;
@@ -71,6 +76,7 @@ export interface ISupabaseService {
   getConversationMessages(conversationId: string): Promise<Message[]>;
   createConversation(title: string, userId: string): Promise<Conversation | null>;
   saveMessage(conversationId: string, content: string, role: 'user' | 'assistant', toolCalls?: Record<string, unknown>): Promise<Message | null>;
+  getDocumentFileUrl(id: string): Promise<string | null>;
 }
 
 /**
@@ -165,6 +171,96 @@ class SupabaseService implements ISupabaseService {
     }
     
     return data;
+  }
+
+  /**
+   * Create a new document
+   */
+  async createDocument(documentData: Partial<Document>): Promise<Document> {
+    const { data, error } = await this.supabase
+      .from('documents')
+      .insert([documentData])
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error creating document:', error);
+      throw error;
+    }
+    
+    return data;
+  }
+
+  /**
+   * Update a document
+   */
+  async updateDocument(id: string, updates: Partial<Document>): Promise<Document> {
+    const { data, error } = await this.supabase
+      .from('documents')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error(`Error updating document with ID ${id}:`, error);
+      throw error;
+    }
+    
+    return data;
+  }
+
+  /**
+   * Delete a document
+   */
+  async deleteDocument(id: string): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('documents')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      console.error(`Error deleting document with ID ${id}:`, error);
+      throw error;
+    }
+    
+    return true;
+  }
+
+  /**
+   * Get a signed URL for a document file
+   * @param id Document ID
+   * @returns Signed URL for downloading the document
+   */
+  async getDocumentFileUrl(id: string): Promise<string | null> {
+    try {
+      // First, get the document to find the file path
+      const document = await this.getDocumentById(id);
+      
+      if (!document || !document.file_url) {
+        return null;
+      }
+      
+      // Extract the file path from the file_url
+      // Assuming file_url is in format 'documents/file-name.pdf'
+      const filePath = document.file_url;
+      
+      // Create a signed URL that expires in 60 minutes
+      const { data, error } = await this.supabase
+        .storage
+        .from('documents')
+        .createSignedUrl(filePath, 3600);
+      
+      if (error) {
+        console.error(`Error creating signed URL for document ${id}:`, error);
+        return null;
+      }
+      
+      return data.signedUrl;
+    } catch (error) {
+      console.error(`Error getting document file URL for ID ${id}:`, error);
+      return null;
+    }
   }
 
   /**

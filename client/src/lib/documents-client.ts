@@ -317,3 +317,30 @@ export async function searchDocuments(params: {
   
   return response.json();
 }
+
+/**
+ * Download a document file
+ * @param id Document ID to download
+ * @returns URL to download the document
+ */
+export async function downloadDocument(id: string): Promise<string> {
+  try {
+    const response = await fetch(`/api/v1/documents/${id}/download`);
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to download document with ID ${id}`);
+    }
+    
+    const result = await response.json();
+    
+    if (!result.success || !result.data || !result.data.fileUrl) {
+      throw new Error(`Invalid download response for document ${id}`);
+    }
+    
+    return result.data.fileUrl;
+  } catch (error: any) {
+    console.error(`Error downloading document ${id}:`, error);
+    throw error;
+  }
+}

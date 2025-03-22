@@ -15,10 +15,10 @@ router.get('/health', (req, res) => {
   });
 });
 
-// API routes
-router.use('/ai', aiRoutes);
-router.use('/documents', documentRoutes);
-router.use('/properties', propertyRoutes);
-router.use('/people', peopleRoutes);
+// API v1 routes
+router.use('/v1/ai', aiRoutes);
+router.use('/v1/documents', documentRoutes);
+router.use('/v1/properties', propertyRoutes);
+router.use('/v1/people', peopleRoutes);
 
 export default router;

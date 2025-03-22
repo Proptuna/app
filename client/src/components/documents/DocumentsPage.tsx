@@ -418,8 +418,8 @@ export default function DocumentsPage() {
         </div>
       )}
 
-      <div className="relative flex-1 h-full">
-        <div className={`transition-all duration-300 h-full ${isViewingDocument ? 'translate-x-[-100%]' : 'translate-x-0'}`}>
+      <div className="relative flex-1 h-full overflow-hidden">
+        <div className={`absolute top-0 left-0 w-full h-full transition-all duration-300 transform ${isViewingDocument ? 'translate-x-[-100%]' : 'translate-x-0'}`}>
           <DocumentsDataTable 
             documents={documents}
             onDocumentView={handleViewDocument}
@@ -427,7 +427,7 @@ export default function DocumentsPage() {
           />
         </div>
         
-        <div className={`absolute top-0 left-0 w-full h-full transition-all duration-300 ${isViewingDocument ? 'translate-x-0' : 'translate-x-[100%]'}`}>
+        <div className={`absolute top-0 left-0 w-full h-full transition-all duration-300 transform ${isViewingDocument ? 'translate-x-0' : 'translate-x-[100%]'}`}>
           {selectedDocument && (
             <DocumentViewer 
               document={selectedDocument} 
