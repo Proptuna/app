@@ -1,0 +1,70 @@
+{
+  "title": "Propriétés",
+  "single": "Propriété",
+  "add": "Ajouter une Propriété",
+  "edit": "Modifier la Propriété",
+  "delete": "Supprimer la Propriété",
+  "delete_confirm": "Êtes-vous sûr de vouloir supprimer cette propriété ?",
+  "fields": {
+    "id": "ID",
+    "name": "Nom",
+    "address": "Adresse",
+    "city": "Ville",
+    "state": "État/Province",
+    "zip": "Code Postal",
+    "country": "Pays",
+    "type": "Type de Propriété",
+    "status": "Statut",
+    "bedrooms": "Chambres",
+    "bathrooms": "Salles de Bain",
+    "area": "Surface (m²)",
+    "rent": "Loyer Mensuel",
+    "purchase_price": "Prix d'Achat",
+    "purchase_date": "Date d'Achat",
+    "description": "Description",
+    "notes": "Notes"
+  },
+  "types": {
+    "single_family": "Maison Individuelle",
+    "multi_family": "Multi-Familial",
+    "apartment": "Appartement",
+    "condo": "Copropriété",
+    "townhouse": "Maison de Ville",
+    "commercial": "Commercial",
+    "land": "Terrain",
+    "other": "Autre"
+  },
+  "status": {
+    "active": "Actif",
+    "inactive": "Inactif",
+    "pending": "En Attente",
+    "sold": "Vendu",
+    "rented": "Loué",
+    "vacant": "Vacant",
+    "maintenance": "En Maintenance"
+  },
+  "tabs": {
+    "details": "Détails",
+    "tenants": "Locataires",
+    "documents": "Documents",
+    "maintenance": "Maintenance",
+    "financials": "Finances",
+    "history": "Historique"
+  },
+  "empty_state": "Aucune propriété trouvée",
+  "loading": "Chargement des propriétés...",
+  "error": "Erreur lors du chargement des propriétés",
+  "success": {
+    "create": "Propriété créée avec succès",
+    "update": "Propriété mise à jour avec succès",
+    "delete": "Propriété supprimée avec succès"
+  },
+  "filters": {
+    "title": "Filtrer les Propriétés",
+    "apply": "Appliquer les Filtres",
+    "clear": "Effacer les Filtres",
+    "by_type": "Par Type",
+    "by_status": "Par Statut",
+    "by_location": "Par Emplacement"
+  }
+}

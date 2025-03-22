@@ -1,8 +1,5 @@
-"use client"
-
 import React from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useLocation } from "react-router-dom";
 import {
   HomeIcon,
   MessageSquareIcon,
@@ -41,17 +38,17 @@ export function Sidebar({
   },
   onLogout = () => console.log("Logout clicked"),
 }: SidebarProps) {
-  const pathname = usePathname();
+  const location = useLocation();
 
   // Function to determine if a nav item is active
   const isActive = (path: string) => {
-    if (path === "/" && pathname === "/") return true;
-    if (path !== "/" && pathname.startsWith(path)) return true;
+    if (path === "/" && location.pathname === "/") return true;
+    if (path !== "/" && location.pathname.startsWith(path)) return true;
     return false;
   };
 
   const NavItem = ({ icon: Icon, path, label }: { icon: any; path: string; label: string }) => (
-    <Link href={path} passHref>
+    <Link to={path}>
       <div 
         className={`flex items-center px-4 py-3 ${
           isActive(path) 
@@ -84,7 +81,7 @@ export function Sidebar({
 
       <nav className="space-y-2 flex-1">
         <NavItem icon={SparklesIcon} path="/ai-page" label="AI" />
-        <NavItem icon={MessageSquareIcon} path="/ai-conversations-page" label="AI Conversations" />
+        <NavItem icon={MessageSquareIcon} path="/ai-conversations" label="AI Conversations" />
         <NavItem icon={BuildingIcon} path="/properties-page" label="Properties" />
         <NavItem icon={UserIcon} path="/people-page" label="People" />
         <NavItem icon={FileTextIcon} path="/documents-page" label="Documents" />
@@ -111,13 +108,13 @@ export function Sidebar({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuItem asChild>
-              <Link href="/account-page?tab=profile" className="flex cursor-pointer items-center">
+              <Link to="/account-page?tab=profile" className="flex cursor-pointer items-center">
                 <UserIcon className="mr-2 h-4 w-4 text-indigo-500" />
                 <span>Profile</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/account-page?tab=preferences" className="flex cursor-pointer items-center">
+              <Link to="/account-page?tab=preferences" className="flex cursor-pointer items-center">
                 <SettingsIcon className="mr-2 h-4 w-4 text-indigo-500" />
                 <span>Settings</span>
               </Link>

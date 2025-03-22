@@ -1,0 +1,12 @@
+{
+  "nav": {
+    "ai": "AI Assistant",
+    "ai_conversations": "AI Conversations",
+    "properties": "Properties",
+    "people": "People",
+    "documents": "Documents"
+  },
+  "profile": "Profile",
+  "settings": "Settings",
+  "logout": "Logout"
+}

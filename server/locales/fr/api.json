@@ -1,0 +1,28 @@
+{
+  "health": {
+    "success": "L'API fonctionne"
+  },
+  "property": {
+    "created": "Propriété créée avec succès",
+    "updated": "Propriété mise à jour avec succès",
+    "deleted": "Propriété supprimée avec succès"
+  },
+  "document": {
+    "created": "Document créé avec succès",
+    "updated": "Document mis à jour avec succès",
+    "deleted": "Document supprimé avec succès",
+    "tagAdded": "Tag ajouté au document",
+    "tagRemoved": "Tag supprimé du document"
+  },
+  "person": {
+    "created": "Personne créée avec succès",
+    "updated": "Personne mise à jour avec succès",
+    "deleted": "Personne supprimée avec succès"
+  },
+  "ai": {
+    "conversationCreated": "Conversation créée avec succès",
+    "conversationUpdated": "Conversation mise à jour avec succès",
+    "conversationDeleted": "Conversation supprimée avec succès",
+    "messageCreated": "Message créé avec succès"
+  }
+}

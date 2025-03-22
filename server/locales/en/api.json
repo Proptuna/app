@@ -1,0 +1,28 @@
+{
+  "health": {
+    "success": "API is running"
+  },
+  "property": {
+    "created": "Property created successfully",
+    "updated": "Property updated successfully",
+    "deleted": "Property deleted successfully"
+  },
+  "document": {
+    "created": "Document created successfully",
+    "updated": "Document updated successfully",
+    "deleted": "Document deleted successfully",
+    "tagAdded": "Tag added to document",
+    "tagRemoved": "Tag removed from document"
+  },
+  "person": {
+    "created": "Person created successfully",
+    "updated": "Person updated successfully",
+    "deleted": "Person deleted successfully"
+  },
+  "ai": {
+    "conversationCreated": "Conversation created successfully",
+    "conversationUpdated": "Conversation updated successfully",
+    "conversationDeleted": "Conversation deleted successfully",
+    "messageCreated": "Message created successfully"
+  }
+}

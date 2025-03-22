@@ -1,0 +1,54 @@
+{
+  "title": "AI Assistant",
+  "chat": {
+    "placeholder": "Type your message here...",
+    "send": "Send",
+    "thinking": "Thinking...",
+    "empty_state": "Start a conversation with the AI assistant",
+    "error": "An error occurred while processing your request"
+  },
+  "conversation": {
+    "new": "New Conversation",
+    "history": "Conversation History",
+    "no_history": "No conversation history found",
+    "loading": "Loading conversations...",
+    "delete": "Delete conversation",
+    "delete_confirm": "Are you sure you want to delete this conversation?",
+    "title": "Conversation with AI"
+  },
+  "tools": {
+    "maintenance": {
+      "title": "Create Maintenance Task",
+      "description": "Create a maintenance task for a property",
+      "success": "Maintenance task created successfully",
+      "error": "Failed to create maintenance task"
+    },
+    "followup": {
+      "title": "Create Follow-up",
+      "description": "Create a follow-up task",
+      "success": "Follow-up task created successfully",
+      "error": "Failed to create follow-up task"
+    },
+    "document": {
+      "title": "Get Document",
+      "description": "Retrieve a document by ID",
+      "success": "Document retrieved successfully",
+      "error": "Failed to retrieve document",
+      "not_found": "Document not found"
+    }
+  },
+  "prompts": {
+    "property_info": "Tell me about property {{propertyId}}",
+    "tenant_info": "Who is the tenant of property {{propertyId}}?",
+    "maintenance_history": "Show maintenance history for property {{propertyId}}",
+    "create_task": "Create a maintenance task for property {{propertyId}}",
+    "document_search": "Find documents related to {{query}}"
+  },
+  "responses": {
+    "greeting": "Hello! I'm your AI assistant. How can I help you today?",
+    "property_not_found": "I couldn't find information about that property.",
+    "tenant_not_found": "I couldn't find tenant information for that property.",
+    "maintenance_created": "I've created a maintenance task for you.",
+    "document_not_found": "I couldn't find any documents matching your query."
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "title": "Properties",
+  "single": "Property",
+  "add": "Add Property",
+  "edit": "Edit Property",
+  "delete": "Delete Property",
+  "delete_confirm": "Are you sure you want to delete this property?",
+  "fields": {
+    "id": "ID",
+    "name": "Name",
+    "address": "Address",
+    "city": "City",
+    "state": "State",
+    "zip": "ZIP Code",
+    "country": "Country",
+    "type": "Property Type",
+    "status": "Status",
+    "bedrooms": "Bedrooms",
+    "bathrooms": "Bathrooms",
+    "area": "Area (sq ft)",
+    "rent": "Monthly Rent",
+    "purchase_price": "Purchase Price",
+    "purchase_date": "Purchase Date",
+    "description": "Description",
+    "notes": "Notes"
+  },
+  "types": {
+    "single_family": "Single Family Home",
+    "multi_family": "Multi-Family",
+    "apartment": "Apartment",
+    "condo": "Condominium",
+    "townhouse": "Townhouse",
+    "commercial": "Commercial",
+    "land": "Land",
+    "other": "Other"
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "pending": "Pending",
+    "sold": "Sold",
+    "rented": "Rented",
+    "vacant": "Vacant",
+    "maintenance": "Under Maintenance"
+  },
+  "tabs": {
+    "details": "Details",
+    "tenants": "Tenants",
+    "documents": "Documents",
+    "maintenance": "Maintenance",
+    "financials": "Financials",
+    "history": "History"
+  },
+  "empty_state": "No properties found",
+  "loading": "Loading properties...",
+  "error": "Error loading properties",
+  "success": {
+    "create": "Property created successfully",
+    "update": "Property updated successfully",
+    "delete": "Property deleted successfully"
+  },
+  "filters": {
+    "title": "Filter Properties",
+    "apply": "Apply Filters",
+    "clear": "Clear Filters",
+    "by_type": "By Type",
+    "by_status": "By Status",
+    "by_location": "By Location"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "app": {
+    "name": "Proptuna",
+    "description": "Property Management Assistant"
+  },
+  "navigation": {
+    "home": "Home",
+    "properties": "Properties",
+    "documents": "Documents",
+    "people": "People",
+    "aiConversations": "AI Conversations"
+  },
+  "actions": {
+    "create": "Create",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "search": "Search"
+  }
+}

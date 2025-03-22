@@ -1,0 +1,26 @@
+{
+  "general": {
+    "notFound": "Resource not found",
+    "badRequest": "Bad request",
+    "unauthorized": "Unauthorized",
+    "forbidden": "Forbidden",
+    "internalServer": "Internal server error"
+  },
+  "property": {
+    "notFound": "Property not found",
+    "invalidData": "Invalid property data"
+  },
+  "document": {
+    "notFound": "Document not found",
+    "invalidData": "Invalid document data"
+  },
+  "person": {
+    "notFound": "Person not found",
+    "invalidData": "Invalid person data"
+  },
+  "ai": {
+    "conversationNotFound": "Conversation not found",
+    "invalidMessages": "Invalid messages format",
+    "apiError": "Error calling AI API"
+  }
+}

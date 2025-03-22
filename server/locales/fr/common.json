@@ -1,0 +1,24 @@
+{
+  "app": {
+    "name": "Proptuna",
+    "description": "Assistant de Gestion Immobilière"
+  },
+  "navigation": {
+    "home": "Accueil",
+    "properties": "Propriétés",
+    "documents": "Documents",
+    "people": "Personnes",
+    "aiConversations": "Conversations IA"
+  },
+  "actions": {
+    "create": "Créer",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "back": "Retour",
+    "next": "Suivant",
+    "submit": "Soumettre",
+    "search": "Rechercher"
+  }
+}

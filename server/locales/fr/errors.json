@@ -1,0 +1,26 @@
+{
+  "general": {
+    "notFound": "Ressource non trouvée",
+    "badRequest": "Requête incorrecte",
+    "unauthorized": "Non autorisé",
+    "forbidden": "Interdit",
+    "internalServer": "Erreur interne du serveur"
+  },
+  "property": {
+    "notFound": "Propriété non trouvée",
+    "invalidData": "Données de propriété invalides"
+  },
+  "document": {
+    "notFound": "Document non trouvé",
+    "invalidData": "Données de document invalides"
+  },
+  "person": {
+    "notFound": "Personne non trouvée",
+    "invalidData": "Données de personne invalides"
+  },
+  "ai": {
+    "conversationNotFound": "Conversation non trouvée",
+    "invalidMessages": "Format de messages invalide",
+    "apiError": "Erreur lors de l'appel à l'API IA"
+  }
+}

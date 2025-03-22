@@ -1,0 +1,37 @@
+{
+  "name": "proptuna",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server",
+    "common"
+  ],
+  "scripts": {
+    "dev:client": "yarn workspace proptuna-client dev",
+    "dev:server": "yarn workspace proptuna-server dev",
+    "dev": "concurrently \"yarn dev:server\" \"yarn dev:client\"",
+    "build:client": "yarn workspace proptuna-client build",
+    "build:server": "yarn workspace proptuna-server build",
+    "build:common": "yarn workspace proptuna-common build",
+    "build": "yarn build:common && yarn build:server && yarn build:client",
+    "start": "yarn workspace proptuna-server start",
+    "lint:client": "yarn workspace proptuna-client lint",
+    "lint:server": "yarn workspace proptuna-server lint",
+    "lint:common": "yarn workspace proptuna-common lint",
+    "lint": "yarn lint:common && yarn lint:server && yarn lint:client",
+    "db:migrate": "supabase db reset",
+    "db:seed": "supabase db seed",
+    "db:init": "yarn db:migrate && yarn db:seed",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:status": "supabase status",
+    "supabase:ensure": "supabase status || supabase start",
+    "db:setup": "yarn supabase:start && yarn db:init",
+    "db:reset": "supabase db reset",
+    "migrate:prod": "node scripts/migrate-db.js"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

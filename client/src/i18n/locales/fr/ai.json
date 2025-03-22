@@ -1,0 +1,54 @@
+{
+  "title": "Assistant IA",
+  "chat": {
+    "placeholder": "Tapez votre message ici...",
+    "send": "Envoyer",
+    "thinking": "Réflexion en cours...",
+    "empty_state": "Commencez une conversation avec l'assistant IA",
+    "error": "Une erreur s'est produite lors du traitement de votre demande"
+  },
+  "conversation": {
+    "new": "Nouvelle Conversation",
+    "history": "Historique des Conversations",
+    "no_history": "Aucun historique de conversation trouvé",
+    "loading": "Chargement des conversations...",
+    "delete": "Supprimer la conversation",
+    "delete_confirm": "Êtes-vous sûr de vouloir supprimer cette conversation ?",
+    "title": "Conversation avec l'IA"
+  },
+  "tools": {
+    "maintenance": {
+      "title": "Créer une Tâche de Maintenance",
+      "description": "Créer une tâche de maintenance pour une propriété",
+      "success": "Tâche de maintenance créée avec succès",
+      "error": "Échec de la création de la tâche de maintenance"
+    },
+    "followup": {
+      "title": "Créer un Suivi",
+      "description": "Créer une tâche de suivi",
+      "success": "Tâche de suivi créée avec succès",
+      "error": "Échec de la création de la tâche de suivi"
+    },
+    "document": {
+      "title": "Obtenir un Document",
+      "description": "Récupérer un document par ID",
+      "success": "Document récupéré avec succès",
+      "error": "Échec de la récupération du document",
+      "not_found": "Document non trouvé"
+    }
+  },
+  "prompts": {
+    "property_info": "Parlez-moi de la propriété {{propertyId}}",
+    "tenant_info": "Qui est le locataire de la propriété {{propertyId}} ?",
+    "maintenance_history": "Afficher l'historique de maintenance pour la propriété {{propertyId}}",
+    "create_task": "Créer une tâche de maintenance pour la propriété {{propertyId}}",
+    "document_search": "Trouver des documents liés à {{query}}"
+  },
+  "responses": {
+    "greeting": "Bonjour ! Je suis votre assistant IA. Comment puis-je vous aider aujourd'hui ?",
+    "property_not_found": "Je n'ai pas pu trouver d'informations sur cette propriété.",
+    "tenant_not_found": "Je n'ai pas pu trouver d'informations sur le locataire pour cette propriété.",
+    "maintenance_created": "J'ai créé une tâche de maintenance pour vous.",
+    "document_not_found": "Je n'ai pas pu trouver de documents correspondant à votre requête."
+  }
+}
